@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -11,13 +11,17 @@ from app.schemas.schedule import (
     ScheduleEntryCancelResponse,
     ScheduleEntryCreate,
     ScheduleEntryCreateResponse,
+    ScheduleEntryHistoryResponse,
     ScheduleEntryRead,
     ScheduleEntryReplace,
     ScheduleEntryReplaceResponse,
     ScheduleEntryUpdate,
     ScheduleEntryUpdateResponse,
+    ScheduleHistoryChangeRead,
+    ScheduleHistoryEntryRead,
 )
 from app.services.schedule_entry_service import ScheduleEntryService
+from app.services.schedule_history_query_service import ScheduleHistoryQueryService
 from app.services.schedule_query_service import ScheduleQueryOptions, ScheduleQueryService
 
 router = APIRouter(prefix="/schedule", tags=["schedule"])
@@ -197,6 +201,59 @@ def _to_schedule_entry_read(entry: ScheduleEntry) -> ScheduleEntryRead:
         teacher_id=entry.teacher_id,
         room_id=entry.room_id,
         group_ids=[link.study_group_id for link in entry.group_links],
+    )
+
+
+def _to_schedule_history_entry_read(entry: ScheduleEntry) -> ScheduleHistoryEntryRead:
+    return ScheduleHistoryEntryRead(
+        id=entry.id,
+        entry_type=entry.entry_type,
+        lesson_date=entry.lesson_date,
+        period_number=entry.period_number,
+        starts_at=entry.starts_at,
+        ends_at=entry.ends_at,
+        week_type=entry.week_type,
+        title=entry.title,
+        notes=entry.notes,
+        lesson_plan_item_id=entry.lesson_plan_item_id,
+        subject_id=entry.subject_id,
+        teacher_id=entry.teacher_id,
+        room_id=entry.room_id,
+        group_ids=[link.study_group_id for link in entry.group_links],
+    )
+
+
+@router.get("/entries/{entry_id}/history", response_model=ScheduleEntryHistoryResponse)
+def get_schedule_entry_history(
+    entry_id: int,
+    db: Session = Depends(get_db),
+) -> ScheduleEntryHistoryResponse:
+    history = ScheduleHistoryQueryService().get_entry_history(db, entry_id)
+    if history is None:
+        raise HTTPException(status_code=404, detail="Schedule entry not found")
+
+    return ScheduleEntryHistoryResponse(
+        requested_entry_id=history.requested_entry_id,
+        root_entry=_to_schedule_history_entry_read(history.root_entry),
+        changes=[
+            ScheduleHistoryChangeRead(
+                id=change.id,
+                change_type=change.change_type,
+                effective_date=change.effective_date,
+                reason=change.reason,
+                notes=change.notes,
+                changed_by_user_id=change.changed_by_user_id,
+                original_entry_id=change.original_entry_id,
+                replacement_entry_id=change.replacement_entry_id,
+                replacement_entry=(
+                    _to_schedule_history_entry_read(change.replacement_entry)
+                    if change.replacement_entry is not None
+                    else None
+                ),
+            )
+            for change in history.changes
+        ],
+        truncated=history.truncated,
     )
 
 

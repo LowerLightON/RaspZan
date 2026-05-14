@@ -97,3 +97,26 @@ class ScheduleEntryRead(BaseModel):
     teacher_id: int | None = None
     room_id: int | None = None
     group_ids: list[int] = Field(default_factory=list)
+
+
+class ScheduleHistoryEntryRead(ScheduleEntryRead):
+    pass
+
+
+class ScheduleHistoryChangeRead(BaseModel):
+    id: int
+    change_type: ScheduleChangeType
+    effective_date: date | None = None
+    reason: str | None = None
+    notes: str | None = None
+    changed_by_user_id: int | None = None
+    original_entry_id: int
+    replacement_entry_id: int | None = None
+    replacement_entry: ScheduleHistoryEntryRead | None = None
+
+
+class ScheduleEntryHistoryResponse(BaseModel):
+    requested_entry_id: int
+    root_entry: ScheduleHistoryEntryRead
+    changes: list[ScheduleHistoryChangeRead]
+    truncated: bool = False
