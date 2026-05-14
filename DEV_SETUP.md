@@ -81,6 +81,14 @@ python -m app.scripts.seed_dev
 
 The seed creates roles, a test planner user, faculty, department, group, teacher, building, room, subject, lesson plan, and lesson plan item. It is idempotent, so repeated runs should not create duplicates.
 
+Load demo schedule data for visually checking Schedule Explorer table and grid views:
+
+```powershell
+python -m app.scripts.seed_demo_schedule
+```
+
+The demo schedule uses group `DEV-101`, dates `2026-05-04` through `2026-05-09`, several periods, and one stacked grid slot.
+
 ## Run Server
 
 ```powershell
@@ -183,6 +191,12 @@ Load development seed data:
 
 ```powershell
 docker compose run --rm app python -m app.scripts.seed_dev
+```
+
+Load demo schedule data:
+
+```powershell
+docker compose run --rm app python -m app.scripts.seed_demo_schedule
 ```
 
 The Docker app container uses `DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/raspzan`. Migrations are not run automatically by the container entrypoint.

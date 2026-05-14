@@ -7,15 +7,15 @@ type ErrorMessageProps = {
 
 export function ErrorMessage({
   error,
-  title = "Could not load schedule",
+  title = "Не удалось загрузить расписание",
 }: ErrorMessageProps) {
   if (isApiError(error)) {
     return (
       <section className="notice error" aria-live="polite">
-        <strong>Request failed ({error.status})</strong>
+        <strong>Ошибка запроса ({error.status})</strong>
         {error.envelope ? (
           <>
-            <span>Code: {error.envelope.error.code}</span>
+            <span>Код: {error.envelope.error.code}</span>
             <span>{error.envelope.error.message}</span>
           </>
         ) : (
@@ -28,7 +28,7 @@ export function ErrorMessage({
   return (
     <section className="notice error" aria-live="polite">
       <strong>{title}</strong>
-      <span>{error instanceof Error ? error.message : "Network error"}</span>
+      <span>{error instanceof Error ? error.message : "Ошибка сети"}</span>
     </section>
   );
 }

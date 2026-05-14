@@ -9,6 +9,7 @@ import type {
 import { Button } from "../../shared/ui/Button";
 import { ErrorMessage } from "../../shared/ui/ErrorMessage";
 import { WeeklyScheduleGridView } from "./WeeklyScheduleGridView";
+import { formatScheduleEntryType } from "./formatScheduleEntryType";
 import type { ScheduleExplorerView } from "./scheduleExplorerTypes";
 
 type ScheduleExplorerResultsProps = {
@@ -65,19 +66,19 @@ function ScheduleResultsToolbar({
   return (
     <div className="results-toolbar">
       <div className="summary">
-        <span>Total: {data.total}</span>
-        <span>Limit: {data.limit}</span>
-        <span>Offset: {data.offset}</span>
-        {view === "grid" ? <span>Grid range: first 100 from offset 0</span> : null}
+        <span>Всего: {data.total}</span>
+        <span>Лимит: {data.limit}</span>
+        <span>Смещение: {data.offset}</span>
+        {view === "grid" ? <span>Диапазон сетки: первые 100 со смещения 0</span> : null}
       </div>
-      <div className="view-toggle" aria-label="Results view">
+      <div className="view-toggle" aria-label="Вид результатов">
         <Button
           aria-pressed={view === "table"}
           className="view-toggle-button"
           type="button"
           onClick={() => onViewChange("table")}
         >
-          Table View
+          Таблица
         </Button>
         <Button
           aria-pressed={view === "grid"}
@@ -85,7 +86,7 @@ function ScheduleResultsToolbar({
           type="button"
           onClick={() => onViewChange("grid")}
         >
-          Grid View
+          Сетка
         </Button>
       </div>
     </div>
@@ -106,13 +107,13 @@ function ScheduleTableView({
       <table>
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Period</th>
-            <th>Subject</th>
-            <th>Teacher</th>
-            <th>Room</th>
-            <th>Groups</th>
-            <th>Entry type</th>
+            <th>Дата</th>
+            <th>Пара</th>
+            <th>Предмет</th>
+            <th>Преподаватель</th>
+            <th>Аудитория</th>
+            <th>Группы</th>
+            <th>Тип занятия</th>
           </tr>
         </thead>
         <tbody>
@@ -124,7 +125,7 @@ function ScheduleTableView({
               <td>{labelForId(teachers, entry.teacher_id)}</td>
               <td>{labelForId(rooms, entry.room_id)}</td>
               <td>{labelsForIds(groups, entry.group_ids)}</td>
-              <td>{entry.entry_type}</td>
+              <td>{formatScheduleEntryType(entry.entry_type)}</td>
             </tr>
           ))}
         </tbody>
@@ -149,7 +150,7 @@ export function ScheduleExplorerResults({
   if (!hasSubmitted) {
     return (
       <section className="notice">
-        Choose schedule parameters and load the first page.
+        Выберите параметры расписания и загрузите первую страницу.
       </section>
     );
   }
@@ -157,7 +158,7 @@ export function ScheduleExplorerResults({
   if (isFetching) {
     return (
       <section className="notice" aria-live="polite">
-        Loading schedule...
+        Загрузка расписания...
       </section>
     );
   }
@@ -187,7 +188,7 @@ export function ScheduleExplorerResults({
           teachers={teachers}
         />
       ) : data.items.length === 0 ? (
-        <div className="notice">No schedule entries found.</div>
+        <div className="notice">Занятия не найдены.</div>
       ) : (
         <ScheduleTableView
           data={data}

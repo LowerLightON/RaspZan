@@ -26,12 +26,12 @@ export type WeeklyScheduleProjection = {
 };
 
 export const weeklyScheduleWeekdays: WeekdayColumn[] = [
-  { key: "monday", label: "Monday" },
-  { key: "tuesday", label: "Tuesday" },
-  { key: "wednesday", label: "Wednesday" },
-  { key: "thursday", label: "Thursday" },
-  { key: "friday", label: "Friday" },
-  { key: "saturday", label: "Saturday" },
+  { key: "monday", label: "Понедельник" },
+  { key: "tuesday", label: "Вторник" },
+  { key: "wednesday", label: "Среда" },
+  { key: "thursday", label: "Четверг" },
+  { key: "friday", label: "Пятница" },
+  { key: "saturday", label: "Суббота" },
 ];
 
 const minimumPeriodPairs = [1, 3, 5, 7, 9, 11];

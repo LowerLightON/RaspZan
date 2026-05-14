@@ -196,7 +196,7 @@ export function ScheduleExplorerPage() {
       <header className="page-header">
         <div>
           <p className="eyebrow">RaspZan</p>
-          <h1>Schedule Explorer</h1>
+          <h1>Просмотр расписания</h1>
         </div>
       </header>
 

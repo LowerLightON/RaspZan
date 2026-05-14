@@ -33,15 +33,15 @@ type ScheduleExplorerFormProps = {
 };
 
 const scheduleTypeLabels: Record<ScheduleExplorerKind, string> = {
-  group: "Group",
-  teacher: "Teacher",
-  room: "Room",
+  group: "Группа",
+  teacher: "Преподаватель",
+  room: "Аудитория",
 };
 
 const mainSelectPlaceholder: Record<ScheduleExplorerKind, string> = {
-  group: "Select group",
-  teacher: "Select teacher",
-  room: "Select room",
+  group: "Выберите группу",
+  teacher: "Выберите преподавателя",
+  room: "Выберите аудиторию",
 };
 
 function renderLookupOptions(items: LookupItem[]) {
@@ -90,10 +90,10 @@ export function ScheduleExplorerForm({
   return (
     <>
       {isLookupError ? (
-        <ErrorMessage error={lookupError} title="Could not load lookup data" />
+        <ErrorMessage error={lookupError} title="Не удалось загрузить справочники" />
       ) : null}
       <form className="panel form-grid" onSubmit={handleSubmit}>
-        <Field label="Schedule type">
+        <Field label="Тип расписания">
           <Select
             disabled={formDisabled}
             value={draft.kind}
@@ -121,7 +121,7 @@ export function ScheduleExplorerForm({
           </Select>
         </Field>
 
-        <Field label="Date from">
+        <Field label="Дата с">
           <Input
             required
             type="date"
@@ -130,7 +130,7 @@ export function ScheduleExplorerForm({
           />
         </Field>
 
-        <Field label="Date to">
+        <Field label="Дата по">
           <Input
             required
             type="date"
@@ -139,44 +139,44 @@ export function ScheduleExplorerForm({
           />
         </Field>
 
-        <Field label="Subject">
+        <Field label="Предмет">
           <Select
             disabled={formDisabled}
             value={draft.subjectId}
             onChange={(event) => updateField("subjectId", event.target.value)}
           >
-            <option value="">Any subject</option>
+            <option value="">Любой предмет</option>
             {renderLookupOptions(subjects)}
           </Select>
         </Field>
 
         {draft.kind !== "room" ? (
-          <Field label="Room">
+          <Field label="Аудитория">
             <Select
               disabled={formDisabled}
               value={draft.roomId}
               onChange={(event) => updateField("roomId", event.target.value)}
             >
-              <option value="">Any room</option>
+              <option value="">Любая аудитория</option>
               {renderLookupOptions(rooms)}
             </Select>
           </Field>
         ) : null}
 
         {draft.kind !== "teacher" ? (
-          <Field label="Teacher">
+          <Field label="Преподаватель">
             <Select
               disabled={formDisabled}
               value={draft.teacherId}
               onChange={(event) => updateField("teacherId", event.target.value)}
             >
-              <option value="">Any teacher</option>
+              <option value="">Любой преподаватель</option>
               {renderLookupOptions(teachers)}
             </Select>
           </Field>
         ) : null}
 
-        <Field label="Limit">
+        <Field label="Лимит">
           <Input
             disabled={paginationDisabled}
             max="100"
@@ -188,7 +188,7 @@ export function ScheduleExplorerForm({
           />
         </Field>
 
-        <Field label="Offset">
+        <Field label="Смещение">
           <Input
             disabled={paginationDisabled}
             min="0"
@@ -201,7 +201,7 @@ export function ScheduleExplorerForm({
 
         <div className="form-actions">
           <Button disabled={isLoading || formDisabled} type="submit">
-            {isLoading ? "Loading..." : "Load schedule"}
+            {isLoading ? "Загрузка..." : "Загрузить расписание"}
           </Button>
         </div>
       </form>

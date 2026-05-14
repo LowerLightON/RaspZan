@@ -12,6 +12,7 @@ import {
   type WeekdayColumn,
   type WeekdayKey,
 } from "./projectWeeklySchedule";
+import { formatScheduleEntryType } from "./formatScheduleEntryType";
 
 type LookupProps = {
   groups: GroupLookupItem[];
@@ -64,7 +65,7 @@ function ScheduleSlotEntryCard({
       <div className="slot-entry-title">{subject}</div>
       <div>{teacher}</div>
       <div>
-        {room} / {entry.entry_type}
+        {room} / {formatScheduleEntryType(entry.entry_type)}
       </div>
       <div>{groupLabels}</div>
     </article>
@@ -127,7 +128,7 @@ export function WeeklyScheduleGridView({
           } as CSSProperties
         }
       >
-        <div className="weekly-grid-corner">Period</div>
+        <div className="weekly-grid-corner">Пара</div>
         {projection.weekdays.map((weekday) => (
           <div className="weekly-grid-header" key={weekday.key}>
             {weekday.label}
