@@ -86,6 +86,7 @@ def test_cancel_existing_entry_creates_schedule_change(db: Session) -> None:
     assert result.change.original_entry_id == entry.id
     assert result.change.replacement_entry_id is None
     assert result.change.reason == "Teacher unavailable"
+    assert result.change.changed_by_user_id is None
     assert result.change.effective_date == entry.lesson_date
 
 
