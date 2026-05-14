@@ -20,6 +20,7 @@ from app.schemas.schedule import (
     ScheduleEntryCreate,
     ScheduleEntryCreateResponse,
     ScheduleEntryHistoryResponse,
+    ScheduleEntryPage,
     ScheduleEntryRead,
     ScheduleEntryReplace,
     ScheduleEntryReplaceResponse,
@@ -30,7 +31,11 @@ from app.schemas.schedule import (
 )
 from app.services.schedule_entry_service import ScheduleEntryService
 from app.services.schedule_history_query_service import ScheduleHistoryQueryService
-from app.services.schedule_query_service import ScheduleQueryOptions, ScheduleQueryService
+from app.services.schedule_query_service import (
+    SchedulePagination,
+    ScheduleQueryOptions,
+    ScheduleQueryService,
+)
 
 router = APIRouter(prefix="/schedule", tags=["schedule"])
 
@@ -323,7 +328,7 @@ def get_schedule_entry_history(
 
 @router.get(
     "/groups/{group_id}",
-    response_model=list[ScheduleEntryRead],
+    response_model=ScheduleEntryPage,
     summary="Get group schedule",
     description=(
         "Returns active schedule entries for a study group within the requested "
@@ -336,21 +341,29 @@ def get_group_schedule(
     date_from: date = Query(...),
     date_to: date = Query(...),
     include_cancelled: bool = Query(default=False),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-) -> list[ScheduleEntryRead]:
-    entries = ScheduleQueryService().get_group_schedule(
+) -> ScheduleEntryPage:
+    page = ScheduleQueryService().get_group_schedule(
         db,
         group_id,
         date_from,
         date_to,
         options=ScheduleQueryOptions(include_cancelled=include_cancelled),
+        pagination=SchedulePagination(limit=limit, offset=offset),
     )
-    return [_to_schedule_entry_read(entry) for entry in entries]
+    return ScheduleEntryPage(
+        items=[_to_schedule_entry_read(entry) for entry in page.items],
+        total=page.total,
+        limit=page.limit,
+        offset=page.offset,
+    )
 
 
 @router.get(
     "/teachers/{teacher_id}",
-    response_model=list[ScheduleEntryRead],
+    response_model=ScheduleEntryPage,
     summary="Get teacher schedule",
     description=(
         "Returns active schedule entries for a teacher within the requested "
@@ -363,21 +376,29 @@ def get_teacher_schedule(
     date_from: date = Query(...),
     date_to: date = Query(...),
     include_cancelled: bool = Query(default=False),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-) -> list[ScheduleEntryRead]:
-    entries = ScheduleQueryService().get_teacher_schedule(
+) -> ScheduleEntryPage:
+    page = ScheduleQueryService().get_teacher_schedule(
         db,
         teacher_id,
         date_from,
         date_to,
         options=ScheduleQueryOptions(include_cancelled=include_cancelled),
+        pagination=SchedulePagination(limit=limit, offset=offset),
     )
-    return [_to_schedule_entry_read(entry) for entry in entries]
+    return ScheduleEntryPage(
+        items=[_to_schedule_entry_read(entry) for entry in page.items],
+        total=page.total,
+        limit=page.limit,
+        offset=page.offset,
+    )
 
 
 @router.get(
     "/rooms/{room_id}",
-    response_model=list[ScheduleEntryRead],
+    response_model=ScheduleEntryPage,
     summary="Get room schedule",
     description=(
         "Returns active schedule entries for a room within the requested date "
@@ -390,13 +411,21 @@ def get_room_schedule(
     date_from: date = Query(...),
     date_to: date = Query(...),
     include_cancelled: bool = Query(default=False),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-) -> list[ScheduleEntryRead]:
-    entries = ScheduleQueryService().get_room_schedule(
+) -> ScheduleEntryPage:
+    page = ScheduleQueryService().get_room_schedule(
         db,
         room_id,
         date_from,
         date_to,
         options=ScheduleQueryOptions(include_cancelled=include_cancelled),
+        pagination=SchedulePagination(limit=limit, offset=offset),
     )
-    return [_to_schedule_entry_read(entry) for entry in entries]
+    return ScheduleEntryPage(
+        items=[_to_schedule_entry_read(entry) for entry in page.items],
+        total=page.total,
+        limit=page.limit,
+        offset=page.offset,
+    )

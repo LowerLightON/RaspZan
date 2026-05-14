@@ -198,7 +198,9 @@ def test_read_group_schedule_works_without_user_header(
     )
 
     assert response.status_code == 200
-    assert [item["id"] for item in response.json()] == [entry.id]
+    body = response.json()
+    assert [item["id"] for item in body["items"]] == [entry.id]
+    assert body["total"] == 1
 
 
 def test_history_endpoint_works_without_user_header(

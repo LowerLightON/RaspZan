@@ -65,6 +65,25 @@ def test_schedule_read_endpoints_document_validation_errors() -> None:
         assert schema_ref == "#/components/schemas/ApiErrorResponse"
 
 
+def test_schedule_read_endpoints_document_pagination() -> None:
+    schema = _openapi_schema()
+    endpoints = [
+        ("/schedule/groups/{group_id}", "get"),
+        ("/schedule/teachers/{teacher_id}", "get"),
+        ("/schedule/rooms/{room_id}", "get"),
+    ]
+
+    for path, method in endpoints:
+        operation = schema["paths"][path][method]
+        parameter_names = {parameter["name"] for parameter in operation["parameters"]}
+        response_schema_ref = operation["responses"]["200"]["content"][
+            "application/json"
+        ]["schema"]["$ref"]
+
+        assert {"limit", "offset"}.issubset(parameter_names)
+        assert response_schema_ref == "#/components/schemas/ScheduleEntryPage"
+
+
 def test_schedule_endpoint_summaries_are_stable() -> None:
     schema = _openapi_schema()
     expected_summaries = {

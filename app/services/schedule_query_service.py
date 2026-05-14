@@ -1,7 +1,7 @@
 from datetime import date
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.schedule import ScheduleEntry, ScheduleEntryGroup
@@ -11,6 +11,20 @@ from app.services.schedule_projection import apply_active_schedule_projection
 @dataclass(frozen=True)
 class ScheduleQueryOptions:
     include_cancelled: bool = False
+
+
+@dataclass(frozen=True)
+class SchedulePagination:
+    limit: int = 20
+    offset: int = 0
+
+
+@dataclass(frozen=True)
+class ScheduleQueryPage:
+    items: list[ScheduleEntry]
+    total: int
+    limit: int
+    offset: int
 
 
 class ScheduleQueryService:
@@ -36,6 +50,30 @@ class ScheduleQueryService:
             include_cancelled=resolved_options.include_cancelled,
         )
 
+    def _paginate_schedule_statement(
+        self,
+        db: Session,
+        statement,
+        pagination: SchedulePagination,
+        *,
+        unique_items: bool = False,
+    ) -> ScheduleQueryPage:
+        count_statement = select(func.count()).select_from(
+            statement.order_by(None).subquery()
+        )
+        total = db.scalar(count_statement) or 0
+
+        items_statement = statement.limit(pagination.limit).offset(pagination.offset)
+        result = db.scalars(items_statement)
+        items = result.unique().all() if unique_items else result.all()
+
+        return ScheduleQueryPage(
+            items=list(items),
+            total=total,
+            limit=pagination.limit,
+            offset=pagination.offset,
+        )
+
     def get_group_schedule(
         self,
         db: Session,
@@ -43,7 +81,8 @@ class ScheduleQueryService:
         date_from: date,
         date_to: date,
         options: ScheduleQueryOptions | None = None,
-    ) -> list[ScheduleEntry]:
+        pagination: SchedulePagination = SchedulePagination(),
+    ) -> ScheduleQueryPage:
         statement = (
             select(ScheduleEntry)
             .join(
@@ -59,7 +98,12 @@ class ScheduleQueryService:
             .order_by(ScheduleEntry.lesson_date, ScheduleEntry.period_number)
         )
         statement = self._apply_query_options(statement, options)
-        return list(db.scalars(statement).unique().all())
+        return self._paginate_schedule_statement(
+            db,
+            statement,
+            pagination,
+            unique_items=True,
+        )
 
     def get_teacher_schedule(
         self,
@@ -68,7 +112,8 @@ class ScheduleQueryService:
         date_from: date,
         date_to: date,
         options: ScheduleQueryOptions | None = None,
-    ) -> list[ScheduleEntry]:
+        pagination: SchedulePagination = SchedulePagination(),
+    ) -> ScheduleQueryPage:
         statement = (
             select(ScheduleEntry)
             .where(
@@ -80,7 +125,7 @@ class ScheduleQueryService:
             .order_by(ScheduleEntry.lesson_date, ScheduleEntry.period_number)
         )
         statement = self._apply_query_options(statement, options)
-        return list(db.scalars(statement).all())
+        return self._paginate_schedule_statement(db, statement, pagination)
 
     def get_room_schedule(
         self,
@@ -89,7 +134,8 @@ class ScheduleQueryService:
         date_from: date,
         date_to: date,
         options: ScheduleQueryOptions | None = None,
-    ) -> list[ScheduleEntry]:
+        pagination: SchedulePagination = SchedulePagination(),
+    ) -> ScheduleQueryPage:
         statement = (
             select(ScheduleEntry)
             .where(
@@ -101,4 +147,4 @@ class ScheduleQueryService:
             .order_by(ScheduleEntry.lesson_date, ScheduleEntry.period_number)
         )
         statement = self._apply_query_options(statement, options)
-        return list(db.scalars(statement).all())
+        return self._paginate_schedule_statement(db, statement, pagination)

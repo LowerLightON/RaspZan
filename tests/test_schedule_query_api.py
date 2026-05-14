@@ -88,8 +88,11 @@ def test_get_group_schedule(client: TestClient, db: Session) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert [item["id"] for item in body] == [entry.id]
-    assert body[0]["group_ids"] == [group.id]
+    assert body["total"] == 1
+    assert body["limit"] == 20
+    assert body["offset"] == 0
+    assert [item["id"] for item in body["items"]] == [entry.id]
+    assert body["items"][0]["group_ids"] == [group.id]
 
 
 def test_get_teacher_schedule(client: TestClient, db: Session) -> None:
@@ -102,8 +105,11 @@ def test_get_teacher_schedule(client: TestClient, db: Session) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert [item["id"] for item in body] == [entry.id]
-    assert body[0]["teacher_id"] == teacher.id
+    assert body["total"] == 1
+    assert body["limit"] == 20
+    assert body["offset"] == 0
+    assert [item["id"] for item in body["items"]] == [entry.id]
+    assert body["items"][0]["teacher_id"] == teacher.id
 
 
 def test_get_room_schedule(client: TestClient, db: Session) -> None:
@@ -116,8 +122,11 @@ def test_get_room_schedule(client: TestClient, db: Session) -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert [item["id"] for item in body] == [entry.id]
-    assert body[0]["room_id"] == room.id
+    assert body["total"] == 1
+    assert body["limit"] == 20
+    assert body["offset"] == 0
+    assert [item["id"] for item in body["items"]] == [entry.id]
+    assert body["items"][0]["room_id"] == room.id
 
 
 def test_get_teacher_schedule_hides_cancelled_by_default(
@@ -140,7 +149,11 @@ def test_get_teacher_schedule_hides_cancelled_by_default(
     )
 
     assert response.status_code == 200
-    assert response.json() == []
+    body = response.json()
+    assert body["items"] == []
+    assert body["total"] == 0
+    assert body["limit"] == 20
+    assert body["offset"] == 0
 
 
 def test_get_teacher_schedule_can_include_cancelled(
@@ -167,7 +180,9 @@ def test_get_teacher_schedule_can_include_cancelled(
     )
 
     assert response.status_code == 200
-    assert [item["id"] for item in response.json()] == [entry.id]
+    body = response.json()
+    assert body["total"] == 1
+    assert [item["id"] for item in body["items"]] == [entry.id]
 
 
 def test_get_teacher_schedule_hides_replaced_original_and_shows_replacement(
@@ -202,7 +217,9 @@ def test_get_teacher_schedule_hides_replaced_original_and_shows_replacement(
     )
 
     assert response.status_code == 200
-    assert [item["id"] for item in response.json()] == [replacement.id]
+    body = response.json()
+    assert body["total"] == 1
+    assert [item["id"] for item in body["items"]] == [replacement.id]
 
 
 def test_get_teacher_schedule_hides_moved_original_and_shows_replacement(
@@ -237,7 +254,9 @@ def test_get_teacher_schedule_hides_moved_original_and_shows_replacement(
     )
 
     assert response.status_code == 200
-    assert [item["id"] for item in response.json()] == [moved_entry.id]
+    body = response.json()
+    assert body["total"] == 1
+    assert [item["id"] for item in body["items"]] == [moved_entry.id]
 
 
 def test_get_teacher_schedule_include_cancelled_does_not_show_replaced_original(
@@ -276,4 +295,98 @@ def test_get_teacher_schedule_include_cancelled_does_not_show_replaced_original(
     )
 
     assert response.status_code == 200
-    assert [item["id"] for item in response.json()] == [replacement.id]
+    body = response.json()
+    assert body["total"] == 1
+    assert [item["id"] for item in body["items"]] == [replacement.id]
+
+
+def test_get_teacher_schedule_returns_limited_window(
+    client: TestClient,
+    db: Session,
+) -> None:
+    group = StudyGroup(code="A-101")
+    teacher = Teacher(last_name="Ivanov", full_name="Ivanov I.I.")
+    room = Room(number="101")
+    db.add_all([group, teacher, room])
+    db.commit()
+
+    entries = [
+        ScheduleEntry(
+            entry_type=ScheduleEntryType.LESSON,
+            lesson_date=date(2026, 9, 1),
+            period_number=period_number,
+            teacher_id=teacher.id,
+            room_id=room.id,
+            groups=[group],
+            title=f"Math {period_number}",
+        )
+        for period_number in (1, 2, 3)
+    ]
+    db.add_all(entries)
+    db.commit()
+
+    response = client.get(
+        f"/schedule/teachers/{teacher.id}",
+        params={
+            "date_from": "2026-09-01",
+            "date_to": "2026-09-30",
+            "limit": "2",
+            "offset": "1",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [item["id"] for item in body["items"]] == [
+        entries[1].id,
+        entries[2].id,
+    ]
+    assert body["total"] == 3
+    assert body["limit"] == 2
+    assert body["offset"] == 1
+
+
+def test_get_teacher_schedule_total_respects_active_projection(
+    client: TestClient,
+    db: Session,
+) -> None:
+    _, teacher, _, entry = _seed_schedule(db)
+    db.add(
+        ScheduleChange(
+            change_type=ScheduleChangeType.CANCELLATION,
+            original_entry_id=entry.id,
+            effective_date=entry.lesson_date,
+        )
+    )
+    db.commit()
+
+    response = client.get(
+        f"/schedule/teachers/{teacher.id}",
+        params={"date_from": "2026-09-01", "date_to": "2026-09-30"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["items"] == []
+    assert body["total"] == 0
+
+
+def test_get_teacher_schedule_rejects_invalid_limit(
+    client: TestClient,
+    db: Session,
+) -> None:
+    _, teacher, _, _ = _seed_schedule(db)
+
+    response = client.get(
+        f"/schedule/teachers/{teacher.id}",
+        params={
+            "date_from": "2026-09-01",
+            "date_to": "2026-09-30",
+            "limit": "0",
+        },
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"]["code"] == "validation_error"
+    assert isinstance(body["error"]["details"]["errors"], list)

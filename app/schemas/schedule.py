@@ -99,6 +99,13 @@ class ScheduleEntryRead(BaseModel):
     group_ids: list[int] = Field(default_factory=list)
 
 
+class ScheduleEntryPage(BaseModel):
+    items: list[ScheduleEntryRead]
+    total: int
+    limit: int
+    offset: int
+
+
 class ScheduleHistoryEntryRead(ScheduleEntryRead):
     pass
 
