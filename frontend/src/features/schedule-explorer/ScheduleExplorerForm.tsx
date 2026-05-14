@@ -14,6 +14,7 @@ import { Select } from "../../shared/ui/Select";
 import type {
   ScheduleExplorerDraft,
   ScheduleExplorerKind,
+  ScheduleExplorerView,
 } from "./scheduleExplorerTypes";
 
 type ScheduleExplorerFormProps = {
@@ -28,6 +29,7 @@ type ScheduleExplorerFormProps = {
   lookupError: unknown;
   onChange: (draft: ScheduleExplorerDraft) => void;
   onSubmit: () => void;
+  view: ScheduleExplorerView;
 };
 
 const scheduleTypeLabels: Record<ScheduleExplorerKind, string> = {
@@ -62,6 +64,7 @@ export function ScheduleExplorerForm({
   lookupError,
   onChange,
   onSubmit,
+  view,
 }: ScheduleExplorerFormProps) {
   function updateField<K extends keyof ScheduleExplorerDraft>(
     field: K,
@@ -82,6 +85,7 @@ export function ScheduleExplorerForm({
   const mainItems =
     draft.kind === "group" ? groups : draft.kind === "teacher" ? teachers : rooms;
   const formDisabled = isLookupLoading || isLookupError;
+  const paginationDisabled = view === "grid";
 
   return (
     <>
@@ -174,6 +178,7 @@ export function ScheduleExplorerForm({
 
         <Field label="Limit">
           <Input
+            disabled={paginationDisabled}
             max="100"
             min="1"
             required
@@ -185,6 +190,7 @@ export function ScheduleExplorerForm({
 
         <Field label="Offset">
           <Input
+            disabled={paginationDisabled}
             min="0"
             required
             type="number"

@@ -17,6 +17,7 @@ import { ScheduleExplorerResults } from "./ScheduleExplorerResults";
 import type {
   ScheduleExplorerDraft,
   ScheduleExplorerQuery,
+  ScheduleExplorerView,
 } from "./scheduleExplorerTypes";
 import { initialScheduleExplorerDraft } from "./scheduleExplorerTypes";
 import {
@@ -25,6 +26,7 @@ import {
 } from "./scheduleExplorerUrlState";
 
 const lookupStaleTime = 5 * 60 * 1000;
+const gridQueryLimit = 100;
 
 function optionalNumber(value: string) {
   return value === "" ? undefined : Number(value);
@@ -66,6 +68,24 @@ function fetchSchedule(query: ScheduleExplorerQuery) {
   return getRoomSchedule(query.entityId, query.params);
 }
 
+function toEffectiveQuery(
+  query: ScheduleExplorerQuery | null,
+  view: ScheduleExplorerView,
+) {
+  if (query === null || view !== "grid") {
+    return query;
+  }
+
+  return {
+    ...query,
+    params: {
+      ...query.params,
+      limit: gridQueryLimit,
+      offset: 0,
+    },
+  };
+}
+
 function readStateFromSearch(search: string) {
   const parsed = parseScheduleExplorerSearchParams(search);
 
@@ -73,12 +93,14 @@ function readStateFromSearch(search: string) {
     return {
       draft: initialScheduleExplorerDraft,
       submittedQuery: null,
+      view: parsed.view,
     };
   }
 
   return {
     draft: parsed.draft,
     submittedQuery: toQuery(parsed.draft),
+    view: parsed.view,
   };
 }
 
@@ -90,6 +112,9 @@ export function ScheduleExplorerPage() {
     useState<ScheduleExplorerQuery | null>(
       () => readStateFromSearch(window.location.search).submittedQuery,
     );
+  const [view, setView] = useState<ScheduleExplorerView>(
+    () => readStateFromSearch(window.location.search).view,
+  );
 
   useEffect(() => {
     function handlePopState() {
@@ -97,6 +122,7 @@ export function ScheduleExplorerPage() {
 
       setDraft(nextState.draft);
       setSubmittedQuery(nextState.submittedQuery);
+      setView(nextState.view);
     }
 
     window.addEventListener("popstate", handlePopState);
@@ -108,10 +134,25 @@ export function ScheduleExplorerPage() {
 
   function handleSubmit() {
     const nextQuery = toQuery(draft);
-    const nextSearch = buildScheduleExplorerSearchParams(draft).toString();
+    const nextSearch = buildScheduleExplorerSearchParams(draft, view).toString();
     const nextUrl = `${window.location.pathname}?${nextSearch}${window.location.hash}`;
 
     setSubmittedQuery(nextQuery);
+
+    if (window.location.search !== `?${nextSearch}`) {
+      window.history.pushState(null, "", nextUrl);
+    }
+  }
+
+  function handleViewChange(nextView: ScheduleExplorerView) {
+    setView(nextView);
+
+    if (submittedQuery === null) {
+      return;
+    }
+
+    const nextSearch = buildScheduleExplorerSearchParams(draft, nextView).toString();
+    const nextUrl = `${window.location.pathname}?${nextSearch}${window.location.hash}`;
 
     if (window.location.search !== `?${nextSearch}`) {
       window.history.pushState(null, "", nextUrl);
@@ -138,10 +179,11 @@ export function ScheduleExplorerPage() {
     queryFn: getSubjectsLookup,
     staleTime: lookupStaleTime,
   });
+  const effectiveScheduleQuery = toEffectiveQuery(submittedQuery, view);
   const scheduleQuery = useQuery({
-    queryKey: ["schedule", submittedQuery],
-    queryFn: () => fetchSchedule(submittedQuery!),
-    enabled: submittedQuery !== null,
+    queryKey: ["schedule", effectiveScheduleQuery],
+    queryFn: () => fetchSchedule(effectiveScheduleQuery!),
+    enabled: effectiveScheduleQuery !== null,
   });
 
   const lookupQueries = [groupsQuery, teachersQuery, roomsQuery, subjectsQuery];
@@ -170,6 +212,7 @@ export function ScheduleExplorerPage() {
         rooms={roomsQuery.data ?? []}
         subjects={subjectsQuery.data ?? []}
         teachers={teachersQuery.data ?? []}
+        view={view}
       />
 
       <ScheduleExplorerResults
@@ -182,6 +225,8 @@ export function ScheduleExplorerPage() {
         rooms={roomsQuery.data ?? []}
         subjects={subjectsQuery.data ?? []}
         teachers={teachersQuery.data ?? []}
+        view={view}
+        onViewChange={handleViewChange}
       />
     </main>
   );

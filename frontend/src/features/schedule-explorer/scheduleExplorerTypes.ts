@@ -1,6 +1,7 @@
 import type { ScheduleQueryParams } from "../../shared/api/schedule";
 
 export type ScheduleExplorerKind = "group" | "teacher" | "room";
+export type ScheduleExplorerView = "table" | "grid";
 
 export type ScheduleExplorerDraft = {
   kind: ScheduleExplorerKind;

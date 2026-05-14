@@ -6,7 +6,10 @@ import type {
   SubjectLookupItem,
   TeacherLookupItem,
 } from "../../shared/types/api";
+import { Button } from "../../shared/ui/Button";
 import { ErrorMessage } from "../../shared/ui/ErrorMessage";
+import { WeeklyScheduleGridView } from "./WeeklyScheduleGridView";
+import type { ScheduleExplorerView } from "./scheduleExplorerTypes";
 
 type ScheduleExplorerResultsProps = {
   data?: PaginatedResponse<ScheduleEntry>;
@@ -18,6 +21,8 @@ type ScheduleExplorerResultsProps = {
   rooms: RoomLookupItem[];
   subjects: SubjectLookupItem[];
   teachers: TeacherLookupItem[];
+  view: ScheduleExplorerView;
+  onViewChange: (view: ScheduleExplorerView) => void;
 };
 
 function labelForId(
@@ -41,6 +46,93 @@ function labelsForIds(items: Array<{ id: number; label: string }>, ids: number[]
     .join(", ");
 }
 
+type LookupProps = {
+  groups: GroupLookupItem[];
+  rooms: RoomLookupItem[];
+  subjects: SubjectLookupItem[];
+  teachers: TeacherLookupItem[];
+};
+
+function ScheduleResultsToolbar({
+  data,
+  onViewChange,
+  view,
+}: {
+  data: PaginatedResponse<ScheduleEntry>;
+  onViewChange: (view: ScheduleExplorerView) => void;
+  view: ScheduleExplorerView;
+}) {
+  return (
+    <div className="results-toolbar">
+      <div className="summary">
+        <span>Total: {data.total}</span>
+        <span>Limit: {data.limit}</span>
+        <span>Offset: {data.offset}</span>
+        {view === "grid" ? <span>Grid range: first 100 from offset 0</span> : null}
+      </div>
+      <div className="view-toggle" aria-label="Results view">
+        <Button
+          aria-pressed={view === "table"}
+          className="view-toggle-button"
+          type="button"
+          onClick={() => onViewChange("table")}
+        >
+          Table View
+        </Button>
+        <Button
+          aria-pressed={view === "grid"}
+          className="view-toggle-button"
+          type="button"
+          onClick={() => onViewChange("grid")}
+        >
+          Grid View
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ScheduleTableView({
+  data,
+  groups,
+  rooms,
+  subjects,
+  teachers,
+}: {
+  data: PaginatedResponse<ScheduleEntry>;
+} & LookupProps) {
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Period</th>
+            <th>Subject</th>
+            <th>Teacher</th>
+            <th>Room</th>
+            <th>Groups</th>
+            <th>Entry type</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.items.map((entry) => (
+            <tr key={entry.id}>
+              <td>{entry.lesson_date}</td>
+              <td>{entry.period_number}</td>
+              <td>{labelForId(subjects, entry.subject_id)}</td>
+              <td>{labelForId(teachers, entry.teacher_id)}</td>
+              <td>{labelForId(rooms, entry.room_id)}</td>
+              <td>{labelsForIds(groups, entry.group_ids)}</td>
+              <td>{entry.entry_type}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function ScheduleExplorerResults({
   data,
   error,
@@ -51,6 +143,8 @@ export function ScheduleExplorerResults({
   rooms,
   subjects,
   teachers,
+  view,
+  onViewChange,
 }: ScheduleExplorerResultsProps) {
   if (!hasSubmitted) {
     return (
@@ -78,43 +172,30 @@ export function ScheduleExplorerResults({
 
   return (
     <section className="panel results">
-      <div className="summary">
-        <span>Total: {data.total}</span>
-        <span>Limit: {data.limit}</span>
-        <span>Offset: {data.offset}</span>
-      </div>
+      <ScheduleResultsToolbar
+        data={data}
+        view={view}
+        onViewChange={onViewChange}
+      />
 
-      {data.items.length === 0 ? (
+      {view === "grid" ? (
+        <WeeklyScheduleGridView
+          entries={data.items}
+          groups={groups}
+          rooms={rooms}
+          subjects={subjects}
+          teachers={teachers}
+        />
+      ) : data.items.length === 0 ? (
         <div className="notice">No schedule entries found.</div>
       ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Period</th>
-                <th>Subject</th>
-                <th>Teacher</th>
-                <th>Room</th>
-                <th>Groups</th>
-                <th>Entry type</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.map((entry) => (
-                <tr key={entry.id}>
-                  <td>{entry.lesson_date}</td>
-                  <td>{entry.period_number}</td>
-                  <td>{labelForId(subjects, entry.subject_id)}</td>
-                  <td>{labelForId(teachers, entry.teacher_id)}</td>
-                  <td>{labelForId(rooms, entry.room_id)}</td>
-                  <td>{labelsForIds(groups, entry.group_ids)}</td>
-                  <td>{entry.entry_type}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ScheduleTableView
+          data={data}
+          groups={groups}
+          rooms={rooms}
+          subjects={subjects}
+          teachers={teachers}
+        />
       )}
     </section>
   );

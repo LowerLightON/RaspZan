@@ -89,9 +89,67 @@ uvicorn app.main:app --reload
 
 Useful local URLs:
 
-- App: http://127.0.0.1:8000/
-- Health: http://127.0.0.1:8000/health
-- OpenAPI: http://127.0.0.1:8000/docs
+- App: http://localhost:8000/
+- Health: http://localhost:8000/health
+- OpenAPI / Swagger: http://localhost:8000/docs
+
+## Frontend Setup
+
+The React frontend lives in `frontend/` and uses Vite, TypeScript, and TanStack Query.
+
+Install dependencies and verify the production build:
+
+```powershell
+cd frontend
+npm install
+npm run build
+```
+
+Run the frontend development server:
+
+```powershell
+npm run dev
+```
+
+Use this dev URL:
+
+```text
+http://localhost:5173
+```
+
+Use `localhost`, not `127.0.0.1`, because the backend CORS configuration allows the frontend dev origin `http://localhost:5173`.
+
+## Backend + Frontend Local Dev
+
+Run the backend and frontend in two separate terminals.
+
+Terminal 1 - backend:
+
+```powershell
+cd C:\Users\LowerLightON\Documents\Project\raspzan
+.\.venv\Scripts\activate
+uvicorn app.main:app --reload
+```
+
+Backend URLs:
+
+```text
+http://localhost:8000
+http://localhost:8000/docs
+```
+
+Terminal 2 - frontend:
+
+```powershell
+cd C:\Users\LowerLightON\Documents\Project\raspzan\frontend
+npm run dev
+```
+
+Frontend URL:
+
+```text
+http://localhost:5173
+```
 
 ## Docker Compose
 
@@ -131,8 +189,39 @@ The Docker app container uses `DATABASE_URL=postgresql+psycopg://postgres:postgr
 
 ## Tests
 
+Backend:
+
 ```powershell
 python -m pytest
+```
+
+Docker:
+
+```powershell
+docker compose run --rm app python -m pytest
+```
+
+Frontend:
+
+```powershell
+cd frontend
+npm run build
+```
+
+## Git Notes
+
+Do not commit generated or local-only files:
+
+- `frontend/node_modules/`
+- `frontend/dist/`
+- `.env`
+- `.venv`
+- `.pytest_cache`
+
+Check ignored files when needed:
+
+```powershell
+git status --ignored
 ```
 
 ## CI

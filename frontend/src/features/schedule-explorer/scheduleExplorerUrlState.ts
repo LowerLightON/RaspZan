@@ -2,19 +2,26 @@ import {
   initialScheduleExplorerDraft,
   type ScheduleExplorerDraft,
   type ScheduleExplorerKind,
+  type ScheduleExplorerView,
 } from "./scheduleExplorerTypes";
 
 export type ParsedScheduleExplorerUrl =
-  | { valid: true; draft: ScheduleExplorerDraft }
-  | { valid: false; draft: ScheduleExplorerDraft };
+  | { valid: true; draft: ScheduleExplorerDraft; view: ScheduleExplorerView }
+  | { valid: false; draft: ScheduleExplorerDraft; view: ScheduleExplorerView };
 
 const validKinds = new Set<ScheduleExplorerKind>(["group", "teacher", "room"]);
+const validViews = new Set<ScheduleExplorerView>(["table", "grid"]);
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const positiveIntegerPattern = /^[1-9]\d*$/;
 const nonNegativeIntegerPattern = /^(0|[1-9]\d*)$/;
+const initialView: ScheduleExplorerView = "table";
 
 function isScheduleExplorerKind(value: string | null): value is ScheduleExplorerKind {
   return value !== null && validKinds.has(value as ScheduleExplorerKind);
+}
+
+function isScheduleExplorerView(value: string | null): value is ScheduleExplorerView {
+  return value !== null && validViews.has(value as ScheduleExplorerView);
 }
 
 function isPositiveInteger(value: string | null): value is string {
@@ -60,9 +67,15 @@ export function parseScheduleExplorerSearchParams(
   const params = new URLSearchParams(search);
 
   if ([...params.keys()].length === 0) {
-    return { valid: false, draft: initialScheduleExplorerDraft };
+    return {
+      valid: false,
+      draft: initialScheduleExplorerDraft,
+      view: initialView,
+    };
   }
 
+  const viewParam = params.get("view");
+  const view = viewParam === null ? initialView : viewParam;
   const kind = params.get("kind");
   const entityId = params.get("entityId");
   const dateFrom = params.get("dateFrom");
@@ -84,13 +97,19 @@ export function parseScheduleExplorerSearchParams(
     teacherId === null ||
     roomId === null ||
     limit === null ||
-    offset === null
+    offset === null ||
+    !isScheduleExplorerView(view)
   ) {
-    return { valid: false, draft: initialScheduleExplorerDraft };
+    return {
+      valid: false,
+      draft: initialScheduleExplorerDraft,
+      view: initialView,
+    };
   }
 
   return {
     valid: true,
+    view,
     draft: {
       kind,
       entityId,
@@ -107,8 +126,13 @@ export function parseScheduleExplorerSearchParams(
 
 export function buildScheduleExplorerSearchParams(
   draft: ScheduleExplorerDraft,
+  view: ScheduleExplorerView = initialView,
 ) {
   const params = new URLSearchParams();
+
+  if (view !== initialView) {
+    params.set("view", view);
+  }
 
   params.set("kind", draft.kind);
   params.set("entityId", draft.entityId);
