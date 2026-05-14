@@ -1,6 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
+  getGroupsLookup,
+  getRoomsLookup,
+  getSubjectsLookup,
+  getTeachersLookup,
+} from "../../shared/api/lookup";
+import {
   getGroupSchedule,
   getRoomSchedule,
   getTeacherSchedule,
@@ -24,6 +30,8 @@ const initialDraft: ScheduleExplorerDraft = {
   limit: "20",
   offset: "0",
 };
+
+const lookupStaleTime = 5 * 60 * 1000;
 
 function optionalNumber(value: string) {
   return value === "" ? undefined : Number(value);
@@ -70,11 +78,36 @@ export function ScheduleExplorerPage() {
   const [submittedQuery, setSubmittedQuery] =
     useState<ScheduleExplorerQuery | null>(null);
 
+  const groupsQuery = useQuery({
+    queryKey: ["lookup", "groups"],
+    queryFn: getGroupsLookup,
+    staleTime: lookupStaleTime,
+  });
+  const teachersQuery = useQuery({
+    queryKey: ["lookup", "teachers"],
+    queryFn: getTeachersLookup,
+    staleTime: lookupStaleTime,
+  });
+  const roomsQuery = useQuery({
+    queryKey: ["lookup", "rooms"],
+    queryFn: getRoomsLookup,
+    staleTime: lookupStaleTime,
+  });
+  const subjectsQuery = useQuery({
+    queryKey: ["lookup", "subjects"],
+    queryFn: getSubjectsLookup,
+    staleTime: lookupStaleTime,
+  });
   const scheduleQuery = useQuery({
     queryKey: ["schedule", submittedQuery],
     queryFn: () => fetchSchedule(submittedQuery!),
     enabled: submittedQuery !== null,
   });
+
+  const lookupQueries = [groupsQuery, teachersQuery, roomsQuery, subjectsQuery];
+  const lookupError = lookupQueries.find((query) => query.error)?.error ?? null;
+  const isLookupLoading = lookupQueries.some((query) => query.isLoading);
+  const isLookupError = lookupQueries.some((query) => query.isError);
 
   return (
     <main className="page">
@@ -87,9 +120,16 @@ export function ScheduleExplorerPage() {
 
       <ScheduleExplorerForm
         draft={draft}
+        groups={groupsQuery.data ?? []}
+        isLookupError={isLookupError}
+        isLookupLoading={isLookupLoading}
         isLoading={scheduleQuery.isFetching}
+        lookupError={lookupError}
         onChange={setDraft}
         onSubmit={() => setSubmittedQuery(toQuery(draft))}
+        rooms={roomsQuery.data ?? []}
+        subjects={subjectsQuery.data ?? []}
+        teachers={teachersQuery.data ?? []}
       />
 
       <ScheduleExplorerResults

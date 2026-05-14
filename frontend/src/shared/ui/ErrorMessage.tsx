@@ -2,9 +2,13 @@ import { isApiError } from "../api/errors";
 
 type ErrorMessageProps = {
   error: unknown;
+  title?: string;
 };
 
-export function ErrorMessage({ error }: ErrorMessageProps) {
+export function ErrorMessage({
+  error,
+  title = "Could not load schedule",
+}: ErrorMessageProps) {
   if (isApiError(error)) {
     return (
       <section className="notice error" aria-live="polite">
@@ -23,7 +27,7 @@ export function ErrorMessage({ error }: ErrorMessageProps) {
 
   return (
     <section className="notice error" aria-live="polite">
-      <strong>Could not load schedule</strong>
+      <strong>{title}</strong>
       <span>{error instanceof Error ? error.message : "Network error"}</span>
     </section>
   );

@@ -29,3 +29,24 @@ export type ScheduleEntry = {
   room_id: number | null;
   group_ids: number[];
 };
+
+export type LookupItem = {
+  id: number;
+  label: string;
+};
+
+export type GroupLookupItem = LookupItem & {
+  code: string;
+};
+
+export type TeacherLookupItem = LookupItem & {
+  full_name: string;
+};
+
+export type RoomLookupItem = LookupItem & {
+  number: string;
+};
+
+export type SubjectLookupItem = LookupItem & {
+  name: string;
+};

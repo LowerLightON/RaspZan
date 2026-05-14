@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.core.config import settings
 from app.core.error_handlers import register_error_handlers
-from app.routers import inventory, schedule
+from app.routers import inventory, lookup, schedule
 
 app = FastAPI(title=settings.app_name)
 app.add_middleware(
@@ -21,6 +21,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(inventory.router)
+app.include_router(lookup.router)
 app.include_router(schedule.router)
 
 

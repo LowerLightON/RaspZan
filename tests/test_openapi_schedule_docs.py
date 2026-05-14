@@ -142,3 +142,25 @@ def test_schedule_endpoint_summaries_are_stable() -> None:
 
     for (path, method), summary in expected_summaries.items():
         assert schema["paths"][path][method]["summary"] == summary
+
+
+def test_lookup_endpoints_are_documented() -> None:
+    schema = _openapi_schema()
+    expected = {
+        "/lookup/groups": ("List group lookup items", "GroupLookupItem"),
+        "/lookup/teachers": ("List teacher lookup items", "TeacherLookupItem"),
+        "/lookup/rooms": ("List room lookup items", "RoomLookupItem"),
+        "/lookup/subjects": ("List subject lookup items", "SubjectLookupItem"),
+    }
+
+    for path, (summary, schema_name) in expected.items():
+        operation = schema["paths"][path]["get"]
+        response_schema = operation["responses"]["200"]["content"][
+            "application/json"
+        ]["schema"]
+
+        assert operation["summary"] == summary
+        assert response_schema["type"] == "array"
+        assert response_schema["items"]["$ref"] == (
+            f"#/components/schemas/{schema_name}"
+        )
