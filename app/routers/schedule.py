@@ -119,14 +119,14 @@ def update_schedule_entry(
 def cancel_schedule_entry(
     entry_id: int,
     payload: ScheduleEntryCancel,
-    _current_user: User = Depends(require_schedule_write_user),
+    current_user: User = Depends(require_schedule_write_user),
     db: Session = Depends(get_db),
 ) -> ScheduleEntryCancelResponse:
     result = ScheduleEntryService().cancel_entry(
         db,
         entry_id,
         reason=payload.reason,
-        changed_by_user_id=payload.changed_by_user_id,
+        changed_by_user_id=current_user.id,
     )
 
     return ScheduleEntryCancelResponse(
@@ -140,7 +140,7 @@ def cancel_schedule_entry(
 def replace_schedule_entry(
     entry_id: int,
     payload: ScheduleEntryReplace,
-    _current_user: User = Depends(require_schedule_write_user),
+    current_user: User = Depends(require_schedule_write_user),
     db: Session = Depends(get_db),
 ) -> ScheduleEntryReplaceResponse:
     replacement_entry = ScheduleEntry(
@@ -165,7 +165,7 @@ def replace_schedule_entry(
         payload.group_ids,
         payload.change_type,
         reason=payload.reason,
-        changed_by_user_id=payload.changed_by_user_id,
+        changed_by_user_id=current_user.id,
     )
 
     return ScheduleEntryReplaceResponse(

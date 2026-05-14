@@ -141,6 +141,7 @@ def test_replace_entry_creates_replacement_and_schedule_change(db: Session) -> N
     assert result.change.original_entry_id == original.id
     assert result.change.replacement_entry_id == result.replacement_entry.id
     assert result.change.reason == "Teacher unavailable"
+    assert result.change.changed_by_user_id is None
     assert result.change.effective_date == original.lesson_date
 
 
