@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.schedule import ScheduleEntry, ScheduleEntryGroup
 from app.services.conflicts.base import BaseConflictValidator
 from app.services.conflicts.models import ScheduleConflict
+from app.services.schedule_projection import apply_active_schedule_projection
 
 
 class GroupConflictValidator(BaseConflictValidator):
@@ -33,6 +34,7 @@ class GroupConflictValidator(BaseConflictValidator):
                 ScheduleEntryGroup.study_group_id.in_(group_ids),
             )
         )
+        statement = apply_active_schedule_projection(statement)
 
         excluded_id = exclude_entry_id if exclude_entry_id is not None else entry.id
         if excluded_id is not None:

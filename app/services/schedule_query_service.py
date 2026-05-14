@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.enums import ScheduleChangeType
-from app.models.schedule import ScheduleChange, ScheduleEntry, ScheduleEntryGroup
+from app.models.schedule import ScheduleEntry, ScheduleEntryGroup
+from app.services.schedule_projection import apply_active_schedule_projection
 
 
 @dataclass(frozen=True)
@@ -17,46 +17,15 @@ class ScheduleQueryService:
     def _options(self, options: ScheduleQueryOptions | None) -> ScheduleQueryOptions:
         return options or ScheduleQueryOptions()
 
-    def _inactive_change_types(
-        self,
-        *,
-        include_cancelled: bool,
-    ) -> tuple[ScheduleChangeType, ...]:
-        inactive_change_types = (
-            ScheduleChangeType.MOVE,
-            ScheduleChangeType.REPLACEMENT,
-        )
-        if not include_cancelled:
-            inactive_change_types = (
-                ScheduleChangeType.CANCELLATION,
-                *inactive_change_types,
-            )
-
-        return inactive_change_types
-
-    def _superseded_entry_exists(
-        self,
-        change_types: tuple[ScheduleChangeType, ...],
-    ):
-        return (
-            select(ScheduleChange.id)
-            .where(
-                ScheduleChange.original_entry_id == ScheduleEntry.id,
-                ScheduleChange.change_type.in_(change_types),
-            )
-            .exists()
-        )
-
     def _apply_active_projection(
         self,
         statement,
         *,
         include_cancelled: bool,
     ):
-        return statement.where(
-            ~self._superseded_entry_exists(
-                self._inactive_change_types(include_cancelled=include_cancelled)
-            )
+        return apply_active_schedule_projection(
+            statement,
+            include_cancelled=include_cancelled,
         )
 
     def _apply_query_options(self, statement, options: ScheduleQueryOptions | None):

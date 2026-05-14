@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.schedule import ScheduleEntry
 from app.services.conflicts.base import BaseConflictValidator
 from app.services.conflicts.models import ScheduleConflict
+from app.services.schedule_projection import apply_active_schedule_projection
 
 
 class TeacherConflictValidator(BaseConflictValidator):
@@ -21,6 +22,7 @@ class TeacherConflictValidator(BaseConflictValidator):
             ScheduleEntry.lesson_date == entry.lesson_date,
             ScheduleEntry.period_number == entry.period_number,
         )
+        statement = apply_active_schedule_projection(statement)
 
         excluded_id = exclude_entry_id if exclude_entry_id is not None else entry.id
         if excluded_id is not None:

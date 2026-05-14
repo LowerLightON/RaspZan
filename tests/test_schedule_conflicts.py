@@ -12,7 +12,7 @@ from app.models.classrooms import Room
 from app.models.departments import Teacher
 from app.models.enums import ScheduleChangeType, ScheduleEntryType
 from app.models.groups import StudyGroup
-from app.models.schedule import ScheduleEntry
+from app.models.schedule import ScheduleChange, ScheduleEntry
 from app.services.conflicts import (
     GroupConflictValidator,
     RoomConflictValidator,
@@ -127,6 +127,95 @@ def test_conflict_service_runs_all_validators(db: Session) -> None:
         "room_busy",
         "teacher_busy",
     }
+
+
+def test_teacher_validator_ignores_cancelled_original(db: Session) -> None:
+    teacher = Teacher(last_name="Ivanov", full_name="Ivanov I.I.")
+    db.add(teacher)
+    db.commit()
+
+    original = _entry(teacher_id=teacher.id)
+    db.add(original)
+    db.commit()
+    db.add(
+        ScheduleChange(
+            change_type=ScheduleChangeType.CANCELLATION,
+            original_entry_id=original.id,
+            effective_date=original.lesson_date,
+        )
+    )
+    db.commit()
+
+    conflicts = TeacherConflictValidator().validate(
+        db,
+        _entry(teacher_id=teacher.id),
+    )
+
+    assert conflicts == []
+
+
+def test_room_validator_ignores_replaced_original(db: Session) -> None:
+    room = Room(number="101")
+    db.add(room)
+    db.commit()
+
+    original = _entry(room_id=room.id)
+    replacement = ScheduleEntry(
+        entry_type=ScheduleEntryType.LESSON,
+        lesson_date=date(2026, 9, 2),
+        period_number=2,
+        room_id=room.id,
+    )
+    db.add_all([original, replacement])
+    db.commit()
+    db.add(
+        ScheduleChange(
+            change_type=ScheduleChangeType.REPLACEMENT,
+            original_entry_id=original.id,
+            replacement_entry_id=replacement.id,
+            effective_date=original.lesson_date,
+        )
+    )
+    db.commit()
+
+    conflicts = RoomConflictValidator().validate(
+        db,
+        _entry(room_id=room.id),
+    )
+
+    assert conflicts == []
+
+
+def test_group_validator_ignores_moved_original(db: Session) -> None:
+    group = StudyGroup(code="A-101")
+    db.add(group)
+    db.commit()
+
+    original = _entry(groups=[group])
+    moved_entry = ScheduleEntry(
+        entry_type=ScheduleEntryType.LESSON,
+        lesson_date=date(2026, 9, 2),
+        period_number=2,
+        groups=[group],
+    )
+    db.add_all([original, moved_entry])
+    db.commit()
+    db.add(
+        ScheduleChange(
+            change_type=ScheduleChangeType.MOVE,
+            original_entry_id=original.id,
+            replacement_entry_id=moved_entry.id,
+            effective_date=original.lesson_date,
+        )
+    )
+    db.commit()
+
+    conflicts = GroupConflictValidator().validate(
+        db,
+        _entry(groups=[group]),
+    )
+
+    assert conflicts == []
 
 
 def test_replacement_does_not_conflict_with_superseded_original(
