@@ -29,10 +29,17 @@ class ScheduleConflictService:
         self,
         db: Session,
         entry: ScheduleEntry,
+        exclude_entry_id: int | None = None,
     ) -> list[ScheduleConflict]:
         conflicts: list[ScheduleConflict] = []
 
         for validator in self.validators:
-            conflicts.extend(validator.validate(db, entry))
+            conflicts.extend(
+                validator.validate(
+                    db,
+                    entry,
+                    exclude_entry_id=exclude_entry_id,
+                )
+            )
 
         return conflicts

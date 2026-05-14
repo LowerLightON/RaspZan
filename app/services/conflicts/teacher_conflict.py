@@ -11,6 +11,7 @@ class TeacherConflictValidator(BaseConflictValidator):
         self,
         db: Session,
         entry: ScheduleEntry,
+        exclude_entry_id: int | None = None,
     ) -> list[ScheduleConflict]:
         if entry.teacher_id is None:
             return []
@@ -21,8 +22,9 @@ class TeacherConflictValidator(BaseConflictValidator):
             ScheduleEntry.period_number == entry.period_number,
         )
 
-        if entry.id is not None:
-            statement = statement.where(ScheduleEntry.id != entry.id)
+        excluded_id = exclude_entry_id if exclude_entry_id is not None else entry.id
+        if excluded_id is not None:
+            statement = statement.where(ScheduleEntry.id != excluded_id)
 
         with db.no_autoflush:
             conflict_entry_id = db.scalar(statement.limit(1))

@@ -11,13 +11,15 @@ class GroupConflictValidator(BaseConflictValidator):
         self,
         db: Session,
         entry: ScheduleEntry,
+        exclude_entry_id: int | None = None,
     ) -> list[ScheduleConflict]:
-        group_ids = {group.id for group in entry.groups if group.id is not None}
-        group_ids.update(
-            link.study_group_id
-            for link in entry.group_links
-            if link.study_group_id is not None
-        )
+        with db.no_autoflush:
+            group_ids = {group.id for group in entry.groups if group.id is not None}
+            group_ids.update(
+                link.study_group_id
+                for link in entry.group_links
+                if link.study_group_id is not None
+            )
 
         if not group_ids:
             return []
@@ -32,8 +34,9 @@ class GroupConflictValidator(BaseConflictValidator):
             )
         )
 
-        if entry.id is not None:
-            statement = statement.where(ScheduleEntry.id != entry.id)
+        excluded_id = exclude_entry_id if exclude_entry_id is not None else entry.id
+        if excluded_id is not None:
+            statement = statement.where(ScheduleEntry.id != excluded_id)
 
         with db.no_autoflush:
             conflict_group_id = db.scalar(statement.limit(1))

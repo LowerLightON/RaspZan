@@ -31,3 +31,15 @@ Thumbs.db
 *.log
 tmp/
 uploads/
+# Alembic
+alembic/versions/__pycache__/
+
+# SQLite
+*.db
+*.sqlite3
+
+# Pyright
+.pyright/
+
+# Coverage
+.coverage.*

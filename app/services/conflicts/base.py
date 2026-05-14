@@ -12,5 +12,6 @@ class BaseConflictValidator(ABC):
         self,
         db: Session,
         entry: ScheduleEntry,
+        exclude_entry_id: int | None = None,
     ) -> list[ScheduleConflict]:
         raise NotImplementedError
