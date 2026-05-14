@@ -13,9 +13,9 @@ from app.db.session import get_db
 from app.main import app
 from app.models.classrooms import Room
 from app.models.departments import Teacher
-from app.models.enums import ScheduleEntryType
+from app.models.enums import ScheduleChangeType, ScheduleEntryType
 from app.models.groups import StudyGroup
-from app.models.schedule import ScheduleEntry
+from app.models.schedule import ScheduleChange, ScheduleEntry
 
 
 @pytest.fixture()
@@ -118,3 +118,53 @@ def test_get_room_schedule(client: TestClient, db: Session) -> None:
     body = response.json()
     assert [item["id"] for item in body] == [entry.id]
     assert body[0]["room_id"] == room.id
+
+
+def test_get_teacher_schedule_hides_cancelled_by_default(
+    client: TestClient,
+    db: Session,
+) -> None:
+    _, teacher, _, entry = _seed_schedule(db)
+    db.add(
+        ScheduleChange(
+            change_type=ScheduleChangeType.CANCELLATION,
+            original_entry_id=entry.id,
+            effective_date=entry.lesson_date,
+        )
+    )
+    db.commit()
+
+    response = client.get(
+        f"/schedule/teachers/{teacher.id}",
+        params={"date_from": "2026-09-01", "date_to": "2026-09-30"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_get_teacher_schedule_can_include_cancelled(
+    client: TestClient,
+    db: Session,
+) -> None:
+    _, teacher, _, entry = _seed_schedule(db)
+    db.add(
+        ScheduleChange(
+            change_type=ScheduleChangeType.CANCELLATION,
+            original_entry_id=entry.id,
+            effective_date=entry.lesson_date,
+        )
+    )
+    db.commit()
+
+    response = client.get(
+        f"/schedule/teachers/{teacher.id}",
+        params={
+            "date_from": "2026-09-01",
+            "date_to": "2026-09-30",
+            "include_cancelled": "true",
+        },
+    )
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [entry.id]

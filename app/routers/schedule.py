@@ -16,7 +16,7 @@ from app.schemas.schedule import (
     ScheduleEntryUpdateResponse,
 )
 from app.services.schedule_entry_service import ScheduleEntryService
-from app.services.schedule_query_service import ScheduleQueryService
+from app.services.schedule_query_service import ScheduleQueryOptions, ScheduleQueryService
 
 router = APIRouter(prefix="/schedule", tags=["schedule"])
 
@@ -149,6 +149,7 @@ def get_group_schedule(
     group_id: int,
     date_from: date = Query(...),
     date_to: date = Query(...),
+    include_cancelled: bool = Query(default=False),
     db: Session = Depends(get_db),
 ) -> list[ScheduleEntryRead]:
     entries = ScheduleQueryService().get_group_schedule(
@@ -156,6 +157,7 @@ def get_group_schedule(
         group_id,
         date_from,
         date_to,
+        options=ScheduleQueryOptions(include_cancelled=include_cancelled),
     )
     return [_to_schedule_entry_read(entry) for entry in entries]
 
@@ -165,6 +167,7 @@ def get_teacher_schedule(
     teacher_id: int,
     date_from: date = Query(...),
     date_to: date = Query(...),
+    include_cancelled: bool = Query(default=False),
     db: Session = Depends(get_db),
 ) -> list[ScheduleEntryRead]:
     entries = ScheduleQueryService().get_teacher_schedule(
@@ -172,6 +175,7 @@ def get_teacher_schedule(
         teacher_id,
         date_from,
         date_to,
+        options=ScheduleQueryOptions(include_cancelled=include_cancelled),
     )
     return [_to_schedule_entry_read(entry) for entry in entries]
 
@@ -181,6 +185,7 @@ def get_room_schedule(
     room_id: int,
     date_from: date = Query(...),
     date_to: date = Query(...),
+    include_cancelled: bool = Query(default=False),
     db: Session = Depends(get_db),
 ) -> list[ScheduleEntryRead]:
     entries = ScheduleQueryService().get_room_schedule(
@@ -188,5 +193,6 @@ def get_room_schedule(
         room_id,
         date_from,
         date_to,
+        options=ScheduleQueryOptions(include_cancelled=include_cancelled),
     )
     return [_to_schedule_entry_read(entry) for entry in entries]
