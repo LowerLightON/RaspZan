@@ -1,8 +1,8 @@
 from datetime import date, time
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-from app.models.enums import ScheduleEntryType, WeekType
+from app.models.enums import ScheduleChangeType, ScheduleEntryType, WeekType
 
 
 class ScheduleEntryCreate(BaseModel):
@@ -53,6 +53,33 @@ class ScheduleEntryCancelResponse(BaseModel):
     entry_id: int | None = None
     change_id: int | None = None
     cancelled: bool
+
+
+class ScheduleEntryReplace(ScheduleEntryCreate):
+    change_type: ScheduleChangeType
+    reason: str | None = None
+    changed_by_user_id: int | None = None
+
+    @field_validator("change_type")
+    @classmethod
+    def validate_change_type(
+        cls,
+        change_type: ScheduleChangeType,
+    ) -> ScheduleChangeType:
+        if change_type not in {
+            ScheduleChangeType.MOVE,
+            ScheduleChangeType.REPLACEMENT,
+        }:
+            raise ValueError("change_type must be move or replacement")
+        return change_type
+
+
+class ScheduleEntryReplaceResponse(BaseModel):
+    original_entry_id: int | None = None
+    replacement_entry_id: int | None = None
+    change_id: int | None = None
+    replaced: bool
+    conflicts: list[ScheduleConflictRead]
 
 
 class ScheduleEntryRead(BaseModel):
