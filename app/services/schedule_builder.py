@@ -1,0 +1,1 @@
+"""Schedule construction service placeholder."""

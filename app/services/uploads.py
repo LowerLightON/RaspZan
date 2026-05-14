@@ -1,0 +1,1 @@
+"""Upload handling service placeholder."""
