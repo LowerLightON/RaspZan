@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   getGroupsLookup,
   getRoomsLookup,
@@ -18,18 +18,11 @@ import type {
   ScheduleExplorerDraft,
   ScheduleExplorerQuery,
 } from "./scheduleExplorerTypes";
-
-const initialDraft: ScheduleExplorerDraft = {
-  kind: "group",
-  entityId: "",
-  dateFrom: "",
-  dateTo: "",
-  subjectId: "",
-  teacherId: "",
-  roomId: "",
-  limit: "20",
-  offset: "0",
-};
+import { initialScheduleExplorerDraft } from "./scheduleExplorerTypes";
+import {
+  buildScheduleExplorerSearchParams,
+  parseScheduleExplorerSearchParams,
+} from "./scheduleExplorerUrlState";
 
 const lookupStaleTime = 5 * 60 * 1000;
 
@@ -73,10 +66,57 @@ function fetchSchedule(query: ScheduleExplorerQuery) {
   return getRoomSchedule(query.entityId, query.params);
 }
 
+function readStateFromSearch(search: string) {
+  const parsed = parseScheduleExplorerSearchParams(search);
+
+  if (!parsed.valid) {
+    return {
+      draft: initialScheduleExplorerDraft,
+      submittedQuery: null,
+    };
+  }
+
+  return {
+    draft: parsed.draft,
+    submittedQuery: toQuery(parsed.draft),
+  };
+}
+
 export function ScheduleExplorerPage() {
-  const [draft, setDraft] = useState(initialDraft);
+  const [draft, setDraft] = useState(
+    () => readStateFromSearch(window.location.search).draft,
+  );
   const [submittedQuery, setSubmittedQuery] =
-    useState<ScheduleExplorerQuery | null>(null);
+    useState<ScheduleExplorerQuery | null>(
+      () => readStateFromSearch(window.location.search).submittedQuery,
+    );
+
+  useEffect(() => {
+    function handlePopState() {
+      const nextState = readStateFromSearch(window.location.search);
+
+      setDraft(nextState.draft);
+      setSubmittedQuery(nextState.submittedQuery);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  function handleSubmit() {
+    const nextQuery = toQuery(draft);
+    const nextSearch = buildScheduleExplorerSearchParams(draft).toString();
+    const nextUrl = `${window.location.pathname}?${nextSearch}${window.location.hash}`;
+
+    setSubmittedQuery(nextQuery);
+
+    if (window.location.search !== `?${nextSearch}`) {
+      window.history.pushState(null, "", nextUrl);
+    }
+  }
 
   const groupsQuery = useQuery({
     queryKey: ["lookup", "groups"],
@@ -126,7 +166,7 @@ export function ScheduleExplorerPage() {
         isLoading={scheduleQuery.isFetching}
         lookupError={lookupError}
         onChange={setDraft}
-        onSubmit={() => setSubmittedQuery(toQuery(draft))}
+        onSubmit={handleSubmit}
         rooms={roomsQuery.data ?? []}
         subjects={subjectsQuery.data ?? []}
         teachers={teachersQuery.data ?? []}
@@ -135,9 +175,13 @@ export function ScheduleExplorerPage() {
       <ScheduleExplorerResults
         data={scheduleQuery.data}
         error={scheduleQuery.error}
+        groups={groupsQuery.data ?? []}
         hasSubmitted={submittedQuery !== null}
         isError={scheduleQuery.isError}
         isFetching={scheduleQuery.isFetching}
+        rooms={roomsQuery.data ?? []}
+        subjects={subjectsQuery.data ?? []}
+        teachers={teachersQuery.data ?? []}
       />
     </main>
   );

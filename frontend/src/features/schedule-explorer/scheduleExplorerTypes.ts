@@ -14,6 +14,18 @@ export type ScheduleExplorerDraft = {
   offset: string;
 };
 
+export const initialScheduleExplorerDraft: ScheduleExplorerDraft = {
+  kind: "group",
+  entityId: "",
+  dateFrom: "",
+  dateTo: "",
+  subjectId: "",
+  teacherId: "",
+  roomId: "",
+  limit: "20",
+  offset: "0",
+};
+
 export type ScheduleExplorerQuery = {
   kind: ScheduleExplorerKind;
   entityId: number;
