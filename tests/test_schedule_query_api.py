@@ -12,6 +12,7 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 from app.models.classrooms import Room
+from app.models.curriculum import Subject
 from app.models.departments import Teacher
 from app.models.enums import ScheduleChangeType, ScheduleEntryType
 from app.models.groups import StudyGroup
@@ -78,6 +79,92 @@ def _seed_schedule(db: Session) -> tuple[StudyGroup, Teacher, Room, ScheduleEntr
     return group, teacher, room, matching_entry
 
 
+def _seed_filter_schedule(
+    db: Session,
+) -> tuple[
+    StudyGroup,
+    Teacher,
+    Teacher,
+    Room,
+    Room,
+    Subject,
+    Subject,
+    list[ScheduleEntry],
+]:
+    group = StudyGroup(code="A-101")
+    matching_teacher = Teacher(last_name="Ivanov", full_name="Ivanov I.I.")
+    other_teacher = Teacher(last_name="Petrov", full_name="Petrov P.P.")
+    matching_room = Room(number="101")
+    other_room = Room(number="202")
+    matching_subject = Subject(name="Math")
+    other_subject = Subject(name="Physics")
+    db.add_all(
+        [
+            group,
+            matching_teacher,
+            other_teacher,
+            matching_room,
+            other_room,
+            matching_subject,
+            other_subject,
+        ]
+    )
+    db.commit()
+
+    matching_teacher_id = matching_teacher.id
+    other_teacher_id = other_teacher.id
+    matching_room_id = matching_room.id
+    other_room_id = other_room.id
+    matching_subject_id = matching_subject.id
+    other_subject_id = other_subject.id
+
+    entries = [
+        ScheduleEntry(
+            entry_type=ScheduleEntryType.LESSON,
+            lesson_date=date(2026, 9, 1),
+            period_number=1,
+            subject_id=matching_subject_id,
+            teacher_id=matching_teacher_id,
+            room_id=matching_room_id,
+            groups=[group],
+            title="Matching Math",
+        ),
+        ScheduleEntry(
+            entry_type=ScheduleEntryType.LESSON,
+            lesson_date=date(2026, 9, 1),
+            period_number=2,
+            subject_id=matching_subject_id,
+            teacher_id=matching_teacher_id,
+            room_id=other_room_id,
+            groups=[group],
+            title="Other room Math",
+        ),
+        ScheduleEntry(
+            entry_type=ScheduleEntryType.LESSON,
+            lesson_date=date(2026, 9, 1),
+            period_number=3,
+            subject_id=other_subject_id,
+            teacher_id=other_teacher_id,
+            room_id=matching_room_id,
+            groups=[group],
+            title="Other teacher Physics",
+        ),
+    ]
+    db.add_all(entries)
+    db.commit()
+
+    return (
+        group,
+        matching_teacher,
+        other_teacher,
+        matching_room,
+        other_room,
+        matching_subject,
+        other_subject,
+        entries,
+    )
+
+
 def test_get_group_schedule(client: TestClient, db: Session) -> None:
     group, _, _, entry = _seed_schedule(db)
 
@@ -93,6 +180,38 @@ def test_get_group_schedule(client: TestClient, db: Session) -> None:
     assert body["offset"] == 0
     assert [item["id"] for item in body["items"]] == [entry.id]
     assert body["items"][0]["group_ids"] == [group.id]
+
+
+def test_get_group_schedule_filters_by_subject_teacher_and_room(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        group,
+        matching_teacher,
+        _,
+        matching_room,
+        _,
+        matching_subject,
+        _,
+        entries,
+    ) = _seed_filter_schedule(db)
+
+    response = client.get(
+        f"/schedule/groups/{group.id}",
+        params={
+            "date_from": "2026-09-01",
+            "date_to": "2026-09-30",
+            "subject_id": str(matching_subject.id),
+            "teacher_id": str(matching_teacher.id),
+            "room_id": str(matching_room.id),
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert [item["id"] for item in body["items"]] == [entries[0].id]
 
 
 def test_get_teacher_schedule(client: TestClient, db: Session) -> None:
@@ -112,6 +231,37 @@ def test_get_teacher_schedule(client: TestClient, db: Session) -> None:
     assert body["items"][0]["teacher_id"] == teacher.id
 
 
+def test_get_teacher_schedule_filters_by_subject_and_room(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        _,
+        matching_teacher,
+        _,
+        matching_room,
+        _,
+        matching_subject,
+        _,
+        entries,
+    ) = _seed_filter_schedule(db)
+
+    response = client.get(
+        f"/schedule/teachers/{matching_teacher.id}",
+        params={
+            "date_from": "2026-09-01",
+            "date_to": "2026-09-30",
+            "subject_id": str(matching_subject.id),
+            "room_id": str(matching_room.id),
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert [item["id"] for item in body["items"]] == [entries[0].id]
+
+
 def test_get_room_schedule(client: TestClient, db: Session) -> None:
     _, _, room, entry = _seed_schedule(db)
 
@@ -127,6 +277,37 @@ def test_get_room_schedule(client: TestClient, db: Session) -> None:
     assert body["offset"] == 0
     assert [item["id"] for item in body["items"]] == [entry.id]
     assert body["items"][0]["room_id"] == room.id
+
+
+def test_get_room_schedule_filters_by_subject_and_teacher(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        _,
+        matching_teacher,
+        _,
+        matching_room,
+        _,
+        matching_subject,
+        _,
+        entries,
+    ) = _seed_filter_schedule(db)
+
+    response = client.get(
+        f"/schedule/rooms/{matching_room.id}",
+        params={
+            "date_from": "2026-09-01",
+            "date_to": "2026-09-30",
+            "subject_id": str(matching_subject.id),
+            "teacher_id": str(matching_teacher.id),
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert [item["id"] for item in body["items"]] == [entries[0].id]
 
 
 def test_get_teacher_schedule_hides_cancelled_by_default(
@@ -344,6 +525,40 @@ def test_get_teacher_schedule_returns_limited_window(
     assert body["total"] == 3
     assert body["limit"] == 2
     assert body["offset"] == 1
+
+
+def test_get_teacher_schedule_total_respects_filtering_and_pagination(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        _,
+        matching_teacher,
+        _,
+        _,
+        _,
+        matching_subject,
+        _,
+        entries,
+    ) = _seed_filter_schedule(db)
+
+    response = client.get(
+        f"/schedule/teachers/{matching_teacher.id}",
+        params={
+            "date_from": "2026-09-01",
+            "date_to": "2026-09-30",
+            "subject_id": str(matching_subject.id),
+            "limit": "1",
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["items"]) == 1
+    assert body["items"][0]["id"] == entries[0].id
+    assert body["total"] == 2
+    assert body["limit"] == 1
+    assert body["offset"] == 0
 
 
 def test_get_teacher_schedule_total_respects_active_projection(

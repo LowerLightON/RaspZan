@@ -20,6 +20,13 @@ class SchedulePagination:
 
 
 @dataclass(frozen=True)
+class ScheduleEntryFilters:
+    subject_id: int | None = None
+    teacher_id: int | None = None
+    room_id: int | None = None
+
+
+@dataclass(frozen=True)
 class ScheduleQueryPage:
     items: list[ScheduleEntry]
     total: int
@@ -49,6 +56,23 @@ class ScheduleQueryService:
             statement,
             include_cancelled=resolved_options.include_cancelled,
         )
+
+    def _apply_entry_filters(
+        self,
+        statement,
+        filters: ScheduleEntryFilters | None,
+    ):
+        if filters is None:
+            return statement
+
+        if filters.subject_id is not None:
+            statement = statement.where(ScheduleEntry.subject_id == filters.subject_id)
+        if filters.teacher_id is not None:
+            statement = statement.where(ScheduleEntry.teacher_id == filters.teacher_id)
+        if filters.room_id is not None:
+            statement = statement.where(ScheduleEntry.room_id == filters.room_id)
+
+        return statement
 
     def _paginate_schedule_statement(
         self,
@@ -81,6 +105,7 @@ class ScheduleQueryService:
         date_from: date,
         date_to: date,
         options: ScheduleQueryOptions | None = None,
+        filters: ScheduleEntryFilters | None = None,
         pagination: SchedulePagination = SchedulePagination(),
     ) -> ScheduleQueryPage:
         statement = (
@@ -97,6 +122,7 @@ class ScheduleQueryService:
             .options(selectinload(ScheduleEntry.group_links))
             .order_by(ScheduleEntry.lesson_date, ScheduleEntry.period_number)
         )
+        statement = self._apply_entry_filters(statement, filters)
         statement = self._apply_query_options(statement, options)
         return self._paginate_schedule_statement(
             db,
@@ -112,6 +138,7 @@ class ScheduleQueryService:
         date_from: date,
         date_to: date,
         options: ScheduleQueryOptions | None = None,
+        filters: ScheduleEntryFilters | None = None,
         pagination: SchedulePagination = SchedulePagination(),
     ) -> ScheduleQueryPage:
         statement = (
@@ -124,6 +151,7 @@ class ScheduleQueryService:
             .options(selectinload(ScheduleEntry.group_links))
             .order_by(ScheduleEntry.lesson_date, ScheduleEntry.period_number)
         )
+        statement = self._apply_entry_filters(statement, filters)
         statement = self._apply_query_options(statement, options)
         return self._paginate_schedule_statement(db, statement, pagination)
 
@@ -134,6 +162,7 @@ class ScheduleQueryService:
         date_from: date,
         date_to: date,
         options: ScheduleQueryOptions | None = None,
+        filters: ScheduleEntryFilters | None = None,
         pagination: SchedulePagination = SchedulePagination(),
     ) -> ScheduleQueryPage:
         statement = (
@@ -146,5 +175,6 @@ class ScheduleQueryService:
             .options(selectinload(ScheduleEntry.group_links))
             .order_by(ScheduleEntry.lesson_date, ScheduleEntry.period_number)
         )
+        statement = self._apply_entry_filters(statement, filters)
         statement = self._apply_query_options(statement, options)
         return self._paginate_schedule_statement(db, statement, pagination)

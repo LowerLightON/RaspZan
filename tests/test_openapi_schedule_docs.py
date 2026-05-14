@@ -11,6 +11,15 @@ def _responses(schema: dict, path: str, method: str) -> dict:
     return schema["paths"][path][method]["responses"]
 
 
+def _query_parameter_names(schema: dict, path: str, method: str) -> set[str]:
+    operation = schema["paths"][path][method]
+    return {
+        parameter["name"]
+        for parameter in operation["parameters"]
+        if parameter["in"] == "query"
+    }
+
+
 def test_openapi_contains_api_error_response_schema() -> None:
     schema = _openapi_schema()
 
@@ -82,6 +91,34 @@ def test_schedule_read_endpoints_document_pagination() -> None:
 
         assert {"limit", "offset"}.issubset(parameter_names)
         assert response_schema_ref == "#/components/schemas/ScheduleEntryPage"
+
+
+def test_schedule_read_endpoints_document_explicit_filters() -> None:
+    schema = _openapi_schema()
+
+    group_query_params = _query_parameter_names(
+        schema,
+        "/schedule/groups/{group_id}",
+        "get",
+    )
+    teacher_query_params = _query_parameter_names(
+        schema,
+        "/schedule/teachers/{teacher_id}",
+        "get",
+    )
+    room_query_params = _query_parameter_names(
+        schema,
+        "/schedule/rooms/{room_id}",
+        "get",
+    )
+
+    assert {"subject_id", "teacher_id", "room_id"}.issubset(group_query_params)
+    assert {"subject_id", "room_id"}.issubset(teacher_query_params)
+    assert {"subject_id", "teacher_id"}.issubset(room_query_params)
+
+    assert "group_id" not in group_query_params
+    assert "teacher_id" not in teacher_query_params
+    assert "room_id" not in room_query_params
 
 
 def test_schedule_endpoint_summaries_are_stable() -> None:

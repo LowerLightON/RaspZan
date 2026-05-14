@@ -32,6 +32,7 @@ from app.schemas.schedule import (
 from app.services.schedule_entry_service import ScheduleEntryService
 from app.services.schedule_history_query_service import ScheduleHistoryQueryService
 from app.services.schedule_query_service import (
+    ScheduleEntryFilters,
     SchedulePagination,
     ScheduleQueryOptions,
     ScheduleQueryService,
@@ -340,6 +341,9 @@ def get_group_schedule(
     group_id: int,
     date_from: date = Query(...),
     date_to: date = Query(...),
+    subject_id: int | None = Query(None),
+    teacher_id: int | None = Query(None),
+    room_id: int | None = Query(None),
     include_cancelled: bool = Query(default=False),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -351,6 +355,11 @@ def get_group_schedule(
         date_from,
         date_to,
         options=ScheduleQueryOptions(include_cancelled=include_cancelled),
+        filters=ScheduleEntryFilters(
+            subject_id=subject_id,
+            teacher_id=teacher_id,
+            room_id=room_id,
+        ),
         pagination=SchedulePagination(limit=limit, offset=offset),
     )
     return ScheduleEntryPage(
@@ -375,6 +384,8 @@ def get_teacher_schedule(
     teacher_id: int,
     date_from: date = Query(...),
     date_to: date = Query(...),
+    subject_id: int | None = Query(None),
+    room_id: int | None = Query(None),
     include_cancelled: bool = Query(default=False),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -386,6 +397,10 @@ def get_teacher_schedule(
         date_from,
         date_to,
         options=ScheduleQueryOptions(include_cancelled=include_cancelled),
+        filters=ScheduleEntryFilters(
+            subject_id=subject_id,
+            room_id=room_id,
+        ),
         pagination=SchedulePagination(limit=limit, offset=offset),
     )
     return ScheduleEntryPage(
@@ -410,6 +425,8 @@ def get_room_schedule(
     room_id: int,
     date_from: date = Query(...),
     date_to: date = Query(...),
+    subject_id: int | None = Query(None),
+    teacher_id: int | None = Query(None),
     include_cancelled: bool = Query(default=False),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -421,6 +438,10 @@ def get_room_schedule(
         date_from,
         date_to,
         options=ScheduleQueryOptions(include_cancelled=include_cancelled),
+        filters=ScheduleEntryFilters(
+            subject_id=subject_id,
+            teacher_id=teacher_id,
+        ),
         pagination=SchedulePagination(limit=limit, offset=offset),
     )
     return ScheduleEntryPage(
