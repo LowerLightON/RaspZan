@@ -17,6 +17,23 @@ class ScheduleQueryService:
     def _options(self, options: ScheduleQueryOptions | None) -> ScheduleQueryOptions:
         return options or ScheduleQueryOptions()
 
+    def _inactive_change_types(
+        self,
+        *,
+        include_cancelled: bool,
+    ) -> tuple[ScheduleChangeType, ...]:
+        inactive_change_types = (
+            ScheduleChangeType.MOVE,
+            ScheduleChangeType.REPLACEMENT,
+        )
+        if not include_cancelled:
+            inactive_change_types = (
+                ScheduleChangeType.CANCELLATION,
+                *inactive_change_types,
+            )
+
+        return inactive_change_types
+
     def _superseded_entry_exists(
         self,
         change_types: tuple[ScheduleChangeType, ...],
@@ -30,28 +47,22 @@ class ScheduleQueryService:
             .exists()
         )
 
-    def _apply_projection(
+    def _apply_active_projection(
         self,
         statement,
         *,
         include_cancelled: bool,
     ):
-        superseding_change_types = (
-            ScheduleChangeType.MOVE,
-            ScheduleChangeType.REPLACEMENT,
-        )
-        if not include_cancelled:
-            superseding_change_types = (
-                ScheduleChangeType.CANCELLATION,
-                *superseding_change_types,
+        return statement.where(
+            ~self._superseded_entry_exists(
+                self._inactive_change_types(include_cancelled=include_cancelled)
             )
-
-        return statement.where(~self._superseded_entry_exists(superseding_change_types))
+        )
 
     def _apply_query_options(self, statement, options: ScheduleQueryOptions | None):
         resolved_options = self._options(options)
 
-        return self._apply_projection(
+        return self._apply_active_projection(
             statement,
             include_cancelled=resolved_options.include_cancelled,
         )
