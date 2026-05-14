@@ -10,7 +10,7 @@ import app.models
 from app.db.base import Base
 from app.models.classrooms import Room
 from app.models.departments import Teacher
-from app.models.enums import ScheduleEntryType
+from app.models.enums import ScheduleChangeType, ScheduleEntryType
 from app.models.groups import StudyGroup
 from app.models.schedule import ScheduleEntry
 from app.services.conflicts import (
@@ -19,6 +19,7 @@ from app.services.conflicts import (
     ScheduleConflictService,
     TeacherConflictValidator,
 )
+from app.services.schedule_entry_service import ScheduleEntryService
 
 
 @pytest.fixture()
@@ -126,3 +127,54 @@ def test_conflict_service_runs_all_validators(db: Session) -> None:
         "room_busy",
         "teacher_busy",
     }
+
+
+def test_replacement_does_not_conflict_with_superseded_original(
+    db: Session,
+) -> None:
+    teacher = Teacher(last_name="Ivanov", full_name="Ivanov I.I.")
+    db.add(teacher)
+    db.commit()
+
+    original = _entry(teacher_id=teacher.id)
+    db.add(original)
+    db.commit()
+
+    result = ScheduleEntryService().replace_entry(
+        db,
+        original.id,
+        _entry(teacher_id=teacher.id),
+        group_ids=[],
+        change_type=ScheduleChangeType.REPLACEMENT,
+    )
+
+    assert result.replaced is True
+    assert result.conflicts == []
+
+
+def test_replacement_conflicts_with_another_active_entry(
+    db: Session,
+) -> None:
+    teacher = Teacher(last_name="Ivanov", full_name="Ivanov I.I.")
+    db.add(teacher)
+    db.commit()
+
+    original = ScheduleEntry(
+        entry_type=ScheduleEntryType.LESSON,
+        lesson_date=date(2026, 9, 1),
+        period_number=1,
+    )
+    active_entry = _entry(teacher_id=teacher.id)
+    db.add_all([original, active_entry])
+    db.commit()
+
+    result = ScheduleEntryService().replace_entry(
+        db,
+        original.id,
+        _entry(teacher_id=teacher.id),
+        group_ids=[],
+        change_type=ScheduleChangeType.REPLACEMENT,
+    )
+
+    assert result.replaced is False
+    assert [conflict.code for conflict in result.conflicts] == ["teacher_busy"]

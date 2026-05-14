@@ -28,6 +28,15 @@ class CancelScheduleEntryResult:
     cancelled: bool
 
 
+@dataclass(frozen=True)
+class ReplaceScheduleEntryResult:
+    original_entry: ScheduleEntry | None
+    replacement_entry: ScheduleEntry | None
+    change: ScheduleChange | None
+    conflicts: list[ScheduleConflict]
+    replaced: bool
+
+
 class ScheduleEntryService:
     def __init__(
         self,
@@ -161,4 +170,87 @@ class ScheduleEntryService:
             entry=entry,
             change=change,
             cancelled=True,
+        )
+
+    def replace_entry(
+        self,
+        db: Session,
+        entry_id: int,
+        replacement_entry: ScheduleEntry,
+        group_ids: list[int],
+        change_type: ScheduleChangeType,
+        reason: str | None = None,
+        changed_by_user_id: int | None = None,
+    ) -> ReplaceScheduleEntryResult:
+        original = db.get(ScheduleEntry, entry_id)
+
+        if original is None:
+            return ReplaceScheduleEntryResult(
+                original_entry=None,
+                replacement_entry=None,
+                change=None,
+                conflicts=[],
+                replaced=False,
+            )
+
+        if change_type not in {
+            ScheduleChangeType.MOVE,
+            ScheduleChangeType.REPLACEMENT,
+        }:
+            return ReplaceScheduleEntryResult(
+                original_entry=original,
+                replacement_entry=None,
+                change=None,
+                conflicts=[],
+                replaced=False,
+            )
+
+        replacement_entry.group_links = [
+            ScheduleEntryGroup(study_group_id=group_id)
+            for group_id in group_ids
+        ]
+
+        conflicts = self.conflict_service.validate_entry(
+            db,
+            replacement_entry,
+            exclude_entry_id=original.id,
+        )
+        has_error_conflicts = any(
+            conflict.severity == "error"
+            for conflict in conflicts
+        )
+
+        if has_error_conflicts:
+            db.rollback()
+            return ReplaceScheduleEntryResult(
+                original_entry=original,
+                replacement_entry=None,
+                change=None,
+                conflicts=conflicts,
+                replaced=False,
+            )
+
+        db.add(replacement_entry)
+        db.flush()
+
+        change = ScheduleChange(
+            change_type=change_type,
+            original_entry_id=original.id,
+            replacement_entry_id=replacement_entry.id,
+            reason=reason,
+            changed_by_user_id=changed_by_user_id,
+            effective_date=original.lesson_date,
+        )
+        db.add(change)
+        db.commit()
+        db.refresh(replacement_entry)
+        db.refresh(change)
+        db.refresh(original)
+
+        return ReplaceScheduleEntryResult(
+            original_entry=original,
+            replacement_entry=replacement_entry,
+            change=change,
+            conflicts=conflicts,
+            replaced=True,
         )

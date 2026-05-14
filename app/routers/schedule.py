@@ -12,6 +12,8 @@ from app.schemas.schedule import (
     ScheduleEntryCreate,
     ScheduleEntryCreateResponse,
     ScheduleEntryRead,
+    ScheduleEntryReplace,
+    ScheduleEntryReplaceResponse,
     ScheduleEntryUpdate,
     ScheduleEntryUpdateResponse,
 )
@@ -122,6 +124,60 @@ def cancel_schedule_entry(
         entry_id=result.entry.id if result.entry is not None else None,
         change_id=result.change.id if result.change is not None else None,
         cancelled=result.cancelled,
+    )
+
+
+@router.post("/entries/{entry_id}/replace", response_model=ScheduleEntryReplaceResponse)
+def replace_schedule_entry(
+    entry_id: int,
+    payload: ScheduleEntryReplace,
+    db: Session = Depends(get_db),
+) -> ScheduleEntryReplaceResponse:
+    replacement_entry = ScheduleEntry(
+        entry_type=payload.entry_type,
+        lesson_date=payload.lesson_date,
+        period_number=payload.period_number,
+        starts_at=payload.starts_at,
+        ends_at=payload.ends_at,
+        week_type=payload.week_type,
+        title=payload.title,
+        notes=payload.notes,
+        lesson_plan_item_id=payload.lesson_plan_item_id,
+        subject_id=payload.subject_id,
+        teacher_id=payload.teacher_id,
+        room_id=payload.room_id,
+    )
+
+    result = ScheduleEntryService().replace_entry(
+        db,
+        entry_id,
+        replacement_entry,
+        payload.group_ids,
+        payload.change_type,
+        reason=payload.reason,
+        changed_by_user_id=payload.changed_by_user_id,
+    )
+
+    return ScheduleEntryReplaceResponse(
+        original_entry_id=(
+            result.original_entry.id if result.original_entry is not None else None
+        ),
+        replacement_entry_id=(
+            result.replacement_entry.id
+            if result.replacement_entry is not None
+            else None
+        ),
+        change_id=result.change.id if result.change is not None else None,
+        replaced=result.replaced,
+        conflicts=[
+            ScheduleConflictRead(
+                code=conflict.code,
+                message=conflict.message,
+                severity=conflict.severity,
+                related_entity_id=conflict.related_entity_id,
+            )
+            for conflict in result.conflicts
+        ],
     )
 
 

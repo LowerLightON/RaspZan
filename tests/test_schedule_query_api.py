@@ -168,3 +168,77 @@ def test_get_teacher_schedule_can_include_cancelled(
 
     assert response.status_code == 200
     assert [item["id"] for item in response.json()] == [entry.id]
+
+
+def test_get_teacher_schedule_hides_replaced_original_and_shows_replacement(
+    client: TestClient,
+    db: Session,
+) -> None:
+    group, teacher, room, original = _seed_schedule(db)
+    replacement = ScheduleEntry(
+        entry_type=ScheduleEntryType.LESSON,
+        lesson_date=date(2026, 9, 2),
+        period_number=2,
+        teacher_id=teacher.id,
+        room_id=room.id,
+        groups=[group],
+        title="Replacement Math",
+    )
+    db.add(replacement)
+    db.commit()
+    db.add(
+        ScheduleChange(
+            change_type=ScheduleChangeType.REPLACEMENT,
+            original_entry_id=original.id,
+            replacement_entry_id=replacement.id,
+            effective_date=replacement.lesson_date,
+        )
+    )
+    db.commit()
+
+    response = client.get(
+        f"/schedule/teachers/{teacher.id}",
+        params={"date_from": "2026-09-01", "date_to": "2026-09-30"},
+    )
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [replacement.id]
+
+
+def test_get_teacher_schedule_include_cancelled_does_not_show_replaced_original(
+    client: TestClient,
+    db: Session,
+) -> None:
+    group, teacher, room, original = _seed_schedule(db)
+    replacement = ScheduleEntry(
+        entry_type=ScheduleEntryType.LESSON,
+        lesson_date=date(2026, 9, 2),
+        period_number=2,
+        teacher_id=teacher.id,
+        room_id=room.id,
+        groups=[group],
+        title="Replacement Math",
+    )
+    db.add(replacement)
+    db.commit()
+    db.add(
+        ScheduleChange(
+            change_type=ScheduleChangeType.REPLACEMENT,
+            original_entry_id=original.id,
+            replacement_entry_id=replacement.id,
+            effective_date=replacement.lesson_date,
+        )
+    )
+    db.commit()
+
+    response = client.get(
+        f"/schedule/teachers/{teacher.id}",
+        params={
+            "date_from": "2026-09-01",
+            "date_to": "2026-09-30",
+            "include_cancelled": "true",
+        },
+    )
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [replacement.id]
