@@ -12,8 +12,9 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 from app.models.departments import Teacher
-from app.models.enums import ScheduleEntryType
+from app.models.enums import ScheduleEntryType, UserRole
 from app.models.schedule import ScheduleEntry
+from app.models.users import Role, User
 
 
 @pytest.fixture()
@@ -65,8 +66,25 @@ def _payload(**overrides: object) -> dict[str, object]:
     return payload
 
 
+def _auth_headers(db: Session, role_code: UserRole = UserRole.SCHEDULER) -> dict[str, str]:
+    role = Role(code=role_code, name=role_code.value)
+    user = User(
+        username=f"{role_code.value}_user",
+        password_hash="stub",
+        full_name="Schedule Writer",
+        role=role,
+    )
+    db.add(user)
+    db.commit()
+    return {"X-User-Id": str(user.id)}
+
+
 def test_schedule_entry_create_success(client: TestClient, db: Session) -> None:
-    response = client.post("/schedule/entries", json=_payload())
+    response = client.post(
+        "/schedule/entries",
+        json=_payload(),
+        headers=_auth_headers(db),
+    )
 
     assert response.status_code == 200
     body = response.json()
@@ -100,6 +118,7 @@ def test_schedule_entry_create_blocked_by_teacher_conflict(
     response = client.post(
         "/schedule/entries",
         json=_payload(teacher_id=teacher.id),
+        headers=_auth_headers(db),
     )
 
     assert response.status_code == 200

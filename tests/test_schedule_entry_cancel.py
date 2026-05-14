@@ -11,8 +11,9 @@ import app.models
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
-from app.models.enums import ScheduleChangeType, ScheduleEntryType
+from app.models.enums import ScheduleChangeType, ScheduleEntryType, UserRole
 from app.models.schedule import ScheduleChange, ScheduleEntry
+from app.models.users import Role, User
 from app.services.schedule_entry_service import ScheduleEntryService
 
 
@@ -52,6 +53,19 @@ def _entry() -> ScheduleEntry:
         period_number=1,
         title="Original lesson",
     )
+
+
+def _auth_headers(db: Session, role_code: UserRole = UserRole.SCHEDULER) -> dict[str, str]:
+    role = Role(code=role_code, name=role_code.value)
+    user = User(
+        username=f"{role_code.value}_user",
+        password_hash="stub",
+        full_name="Schedule Writer",
+        role=role,
+    )
+    db.add(user)
+    db.commit()
+    return {"X-User-Id": str(user.id)}
 
 
 def test_cancel_existing_entry_creates_schedule_change(db: Session) -> None:
@@ -102,6 +116,7 @@ def test_cancel_api_endpoint_works(client: TestClient, db: Session) -> None:
     response = client.post(
         f"/schedule/entries/{entry.id}/cancel",
         json={"reason": "Manual cancellation", "changed_by_user_id": None},
+        headers=_auth_headers(db),
     )
 
     assert response.status_code == 200

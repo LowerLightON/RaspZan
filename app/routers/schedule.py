@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.dependencies.auth import require_schedule_write_user
 from app.models.schedule import ScheduleEntry, ScheduleEntryGroup
+from app.models.users import User
 from app.schemas.schedule import (
     ScheduleConflictRead,
     ScheduleEntryCancel,
@@ -30,6 +32,7 @@ router = APIRouter(prefix="/schedule", tags=["schedule"])
 @router.post("/entries", response_model=ScheduleEntryCreateResponse)
 def create_schedule_entry(
     payload: ScheduleEntryCreate,
+    _current_user: User = Depends(require_schedule_write_user),
     db: Session = Depends(get_db),
 ) -> ScheduleEntryCreateResponse:
     entry = ScheduleEntry(
@@ -72,6 +75,7 @@ def create_schedule_entry(
 def update_schedule_entry(
     entry_id: int,
     payload: ScheduleEntryUpdate,
+    _current_user: User = Depends(require_schedule_write_user),
     db: Session = Depends(get_db),
 ) -> ScheduleEntryUpdateResponse:
     entry = ScheduleEntry(
@@ -115,6 +119,7 @@ def update_schedule_entry(
 def cancel_schedule_entry(
     entry_id: int,
     payload: ScheduleEntryCancel,
+    _current_user: User = Depends(require_schedule_write_user),
     db: Session = Depends(get_db),
 ) -> ScheduleEntryCancelResponse:
     result = ScheduleEntryService().cancel_entry(
@@ -135,6 +140,7 @@ def cancel_schedule_entry(
 def replace_schedule_entry(
     entry_id: int,
     payload: ScheduleEntryReplace,
+    _current_user: User = Depends(require_schedule_write_user),
     db: Session = Depends(get_db),
 ) -> ScheduleEntryReplaceResponse:
     replacement_entry = ScheduleEntry(

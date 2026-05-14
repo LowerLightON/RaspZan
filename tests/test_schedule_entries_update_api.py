@@ -12,9 +12,10 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 from app.models.departments import Teacher
-from app.models.enums import ScheduleEntryType
+from app.models.enums import ScheduleEntryType, UserRole
 from app.models.groups import StudyGroup
 from app.models.schedule import ScheduleEntry, ScheduleEntryGroup
+from app.models.users import Role, User
 
 
 @pytest.fixture()
@@ -66,6 +67,19 @@ def _payload(**overrides: object) -> dict[str, object]:
     return payload
 
 
+def _auth_headers(db: Session, role_code: UserRole = UserRole.SCHEDULER) -> dict[str, str]:
+    role = Role(code=role_code, name=role_code.value)
+    user = User(
+        username=f"{role_code.value}_user",
+        password_hash="stub",
+        full_name="Schedule Writer",
+        role=role,
+    )
+    db.add(user)
+    db.commit()
+    return {"X-User-Id": str(user.id)}
+
+
 def _entry(**overrides: object) -> ScheduleEntry:
     values = {
         "entry_type": ScheduleEntryType.LESSON,
@@ -85,6 +99,7 @@ def test_schedule_entry_update_success(client: TestClient, db: Session) -> None:
     response = client.put(
         f"/schedule/entries/{entry.id}",
         json=_payload(title="New title", period_number=2),
+        headers=_auth_headers(db),
     )
 
     assert response.status_code == 200
@@ -116,6 +131,7 @@ def test_schedule_entry_update_blocked_by_teacher_conflict(
     response = client.put(
         f"/schedule/entries/{entry.id}",
         json=_payload(teacher_id=teacher_two.id),
+        headers=_auth_headers(db),
     )
 
     assert response.status_code == 200
@@ -145,6 +161,7 @@ def test_schedule_entry_update_same_slot_does_not_conflict_with_itself(
     response = client.put(
         f"/schedule/entries/{entry.id}",
         json=_payload(teacher_id=teacher.id, title="Same slot update"),
+        headers=_auth_headers(db),
     )
 
     assert response.status_code == 200
@@ -168,6 +185,7 @@ def test_schedule_entry_update_groups(client: TestClient, db: Session) -> None:
     response = client.put(
         f"/schedule/entries/{entry.id}",
         json=_payload(group_ids=[group_two.id]),
+        headers=_auth_headers(db),
     )
 
     assert response.status_code == 200
