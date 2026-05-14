@@ -93,9 +93,54 @@ Useful local URLs:
 - Health: http://127.0.0.1:8000/health
 - OpenAPI: http://127.0.0.1:8000/docs
 
+## Docker Compose
+
+Docker is an optional local development workflow. The normal virtual environment workflow above remains the primary setup path.
+
+Start PostgreSQL:
+
+```powershell
+docker compose up -d db
+```
+
+Apply migrations manually:
+
+```powershell
+docker compose run --rm app python -m alembic upgrade head
+```
+
+Run the app:
+
+```powershell
+docker compose up app
+```
+
+Run tests:
+
+```powershell
+docker compose run --rm app python -m pytest
+```
+
+Load development seed data:
+
+```powershell
+docker compose run --rm app python -m app.scripts.seed_dev
+```
+
+The Docker app container uses `DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/raspzan`. Migrations are not run automatically by the container entrypoint.
+
 ## Tests
 
 ```powershell
+python -m pytest
+```
+
+## CI
+
+GitHub Actions runs migrations and tests against a PostgreSQL service using Python 3.12:
+
+```text
+python -m alembic upgrade head
 python -m pytest
 ```
 
